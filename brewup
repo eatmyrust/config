@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euxo pipefail
+
+brew bundle --cleanup --file=~/config/Brewfile
+
+brew update --auto-update
+
+brew upgrade
+
+brew cleanup --prune=7
