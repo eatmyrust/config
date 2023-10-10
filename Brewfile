@@ -60,6 +60,7 @@ vscode "Gruntfuggly.todo-tree"
 vscode "eamodio.gitlens"
 vscode "tamasfe.even-better-toml"
 vscode "SonarSource.sonarlint-vscode"
+vscode "yzhang.markdown-all-in-one"
 
 ### Cloud
 brew "aws-shell"
