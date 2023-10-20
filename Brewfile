@@ -94,6 +94,7 @@ vscode "charliermarsh.ruff"
 vscode "ms-python.black-formatter"
 vscode "ms-python.python"
 vscode "ms-python.vscode-pylance"
+vscode "ms-python.mypy-type-checker"
 
 ## Kubernetes Tooling
 brew "eksctl"
