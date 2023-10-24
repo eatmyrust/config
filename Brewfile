@@ -79,6 +79,7 @@ vscode "golang.go"
 ### Rust
 vscode "rust-lang.rust-analyzer"
 vscode "serayuzgur.crates"
+vscode "vadimcn.vscode-lldb"
 
 ### JavaScript
 brew "node"
