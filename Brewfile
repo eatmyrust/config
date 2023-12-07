@@ -84,6 +84,7 @@ vscode "vadimcn.vscode-lldb"
 ### JavaScript
 brew "node"
 vscode "ms-vscode.vscode-typescript-next"
+vscode "dbaeumer.vscode-eslint"
 
 ### Python
 brew "pipx"
