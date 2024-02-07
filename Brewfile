@@ -57,12 +57,13 @@ vscode "redhat.vscode-yaml"
 vscode "ms-vsliveshare.vsliveshare"
 vscode "donjayamanne.githistory"
 vscode "bradlc.vscode-tailwindcss"
-vscode "Gruntfuggly.todo-tree"
+vscode "gruntfuggly.todo-tree"
 vscode "eamodio.gitlens"
 vscode "tamasfe.even-better-toml"
-vscode "SonarSource.sonarlint-vscode"
+vscode "sonarsource.sonarlint-vscode"
 vscode "yzhang.markdown-all-in-one"
 vscode "github.vscode-github-actions"
+vscode "tomoki1207.pdf"
 
 ### Cloud
 brew "aws-shell"
@@ -83,6 +84,7 @@ vscode "vadimcn.vscode-lldb"
 
 ### JavaScript
 brew "node"
+brew "node@20"
 vscode "ms-vscode.vscode-typescript-next"
 vscode "dbaeumer.vscode-eslint"
 
