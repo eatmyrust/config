@@ -2,14 +2,13 @@
 
 ## Taps
 tap "homebrew/bundle"
-tap "romkatv/powerlevel10k"
 tap "tilt-dev/tap"
 tap "garden-io/garden"
 tap "knative/client"
 tap "aquasecurity/trivy"
+tap "coder/coder"
 
 ## Terminal Experience
-brew "powerlevel10k"
 brew "zsh"
 brew "zsh-completions"
 cask "iterm2"
@@ -44,12 +43,14 @@ brew "make"
 brew "trivy"
 brew "convco"
 brew "gh"
+brew "coder/coder/coder"
 cask "ngrok"
 cask "1password"
 cask "1password-cli"
 cask "visual-studio-code"
 vscode "ms-azuretools.vscode-docker"
 vscode "ms-vscode-remote.remote-ssh-edit"
+vscode "ms-vscode-remote.remote-ssh"
 vscode "ms-vscode.remote-explorer"
 vscode "ms-vscode-remote.remote-containers"
 vscode "streetsidesoftware.code-spell-checker"
@@ -64,10 +65,13 @@ vscode "sonarsource.sonarlint-vscode"
 vscode "yzhang.markdown-all-in-one"
 vscode "github.vscode-github-actions"
 vscode "tomoki1207.pdf"
+vscode "coder.coder-remote"
+vscode "usernamehw.errorlens"
 
 ### Cloud
 brew "aws-shell"
 brew "awscli"
+brew "pulumi"
 
 ### Database
 cask "mongodb-compass"
@@ -115,6 +119,8 @@ brew "k9s"
 brew "kind"
 brew "kubectx"
 brew "kubeseal"
+brew "clusterctl"
+brew "clusterawsadm"
 brew "garden-io/garden/garden-cli"
 vscode "ms-kubernetes-tools.vscode-kubernetes-tools"
 # bridge to k8s
