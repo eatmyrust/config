@@ -1,5 +1,3 @@
-# Brewfile for Tory Clasen
-
 ## Taps
 tap "homebrew/bundle"
 tap "tilt-dev/tap"
@@ -7,10 +5,10 @@ tap "garden-io/garden"
 tap "knative/client"
 tap "aquasecurity/trivy"
 tap "coder/coder"
+tap "styrainc/packages"
 
 ## Terminal Experience
 brew "zsh"
-brew "zsh-completions"
 cask "iterm2"
 
 ## Better Shell Tooling
@@ -67,10 +65,12 @@ vscode "github.vscode-github-actions"
 vscode "tomoki1207.pdf"
 vscode "coder.coder-remote"
 vscode "usernamehw.errorlens"
+vscode "github.vscode-pull-request-github"
+vscode "github.codespaces"
+vscode "github.copilot"
+vscode "github.copilot-chat"
 
 ### Cloud
-brew "aws-shell"
-brew "awscli"
 brew "pulumi"
 
 ### Database
@@ -83,26 +83,27 @@ vscode "golang.go"
 
 ### Rust
 vscode "rust-lang.rust-analyzer"
-vscode "serayuzgur.crates"
+vscode "fill-labs.dependi"
 vscode "vadimcn.vscode-lldb"
 
 ### JavaScript
-brew "node"
-brew "node@20"
 vscode "ms-vscode.vscode-typescript-next"
 vscode "dbaeumer.vscode-eslint"
 
 ### Python
-brew "pipx"
-brew "python@3.8"
-brew "python@3.9"
-brew "python@3.10"
-brew "python@3.11"
+brew "uv"
 vscode "charliermarsh.ruff"
 vscode "ms-python.black-formatter"
 vscode "ms-python.python"
 vscode "ms-python.vscode-pylance"
 vscode "ms-python.mypy-type-checker"
+vscode "ms-python.debugpy"
+
+### Open Policy Agent
+brew "opa"
+brew "styrainc/packages/regal"
+brew "oras"
+vscode "tsandall.opa"
 
 ## Kubernetes Tooling
 brew "eksctl"
