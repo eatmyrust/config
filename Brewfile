@@ -138,9 +138,7 @@ cask "rectangle"
 ## Productivity Tools
 cask "drawio"
 cask "firefox"
-cask "microsoft-remote-desktop"
 cask "microsoft-auto-update"
-cask "onedrive"
 cask "obsidian"
 cask "spotify"
 
