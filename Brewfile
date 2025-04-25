@@ -6,30 +6,30 @@ tap "knative/client"
 tap "aquasecurity/trivy"
 tap "coder/coder"
 tap "styrainc/packages"
+tap "codecrafters-io/tap"
+tap "siderolabs/tap"
 
 ## Terminal Experience
 brew "zsh"
-cask "iterm2"
+cask "alacritty"
 
 ## Better Shell Tooling
 brew "aspell"
 brew "bat"
-brew "binutils"
-brew "binwalk"
-brew "coreutils"
+brew "uutils-coreutils"
 brew "curl"
+brew "gnu-sed"
 brew "diffutils"
-brew "dockutil"
 brew "findutils"
-brew "grep"
+brew "ripgrep"
 brew "jq"
+brew "yq"
 brew "openssl"
-brew "tldr"
 brew "tree"
 brew "vim"
 brew "watch"
 brew "wget"
-brew "yq"
+brew "tmux"
 
 ## Developer Tooling
 
@@ -38,10 +38,12 @@ brew "apko"
 brew "docker"
 brew "git"
 brew "make"
+brew "go-task"
 brew "trivy"
 brew "convco"
 brew "gh"
 brew "coder/coder/coder"
+brew "codecrafters-io/tap/codecrafters"
 cask "ngrok"
 cask "1password"
 cask "1password-cli"
@@ -69,6 +71,7 @@ vscode "github.vscode-pull-request-github"
 vscode "github.codespaces"
 vscode "github.copilot"
 vscode "github.copilot-chat"
+vscode "fill-labs.dependi"
 
 ### Cloud
 brew "pulumi"
@@ -83,7 +86,6 @@ vscode "golang.go"
 
 ### Rust
 vscode "rust-lang.rust-analyzer"
-vscode "fill-labs.dependi"
 vscode "vadimcn.vscode-lldb"
 
 ### JavaScript
@@ -110,6 +112,7 @@ brew "eksctl"
 brew "helm"
 brew "kube-linter"
 brew "kubernetes-cli"
+brew "openshift-cli"
 brew "minikube"
 brew "stern"
 brew "tilt-dev/tap/ctlptl"
@@ -123,21 +126,22 @@ brew "kubeseal"
 brew "clusterctl"
 brew "clusterawsadm"
 brew "garden-io/garden/garden-cli"
+brew "siderolabs/tap/talosctl"
 vscode "ms-kubernetes-tools.vscode-kubernetes-tools"
 # bridge to k8s
 vscode "mindaro.mindaro"
 vscode "mindaro-dev.file-downloader"
 
 ## MacOS Enhancements
-cask "caffeine"
 cask "rectangle"
 
 ## Productivity Tools
 cask "drawio"
 cask "firefox"
 cask "microsoft-remote-desktop"
+cask "microsoft-auto-update"
 cask "onedrive"
-cask "notion"
+cask "obsidian"
 cask "spotify"
 
 ## Security
