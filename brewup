@@ -2,7 +2,9 @@
 
 set -euxo pipefail
 
-brew bundle --cleanup --file=~/config/Brewfile
+brew bundle install --file=./Brewfile
+
+brew bundle cleanup --force --file=./Brewfile
 
 brew update --auto-update
 

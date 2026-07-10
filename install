@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# Bootstraps this machine: installs packages via the native package manager
+# for the detected OS (Homebrew on macOS, apt+PPA on Ubuntu/Debian, dnf+EPEL
+# on Rocky/RHEL), then symlinks dotfiles/ into place with GNU Stow.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STOW_PACKAGES=(zsh tmux nvim alacritty)
+
+detect_os() {
+  case "$(uname -s)" in
+    Darwin) echo "macos" ;;
+    Linux)
+      if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        case "${ID:-} ${ID_LIKE:-}" in
+          *ubuntu*|*debian*) echo "debian" ;;
+          *rocky*|*rhel*|*fedora*) echo "rhel" ;;
+          *) echo "unknown" ;;
+        esac
+      else
+        echo "unknown"
+      fi
+      ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+install_nerd_font_linux() {
+  local font_dir="$HOME/.local/share/fonts"
+  local marker="$font_dir/JetBrainsMonoNerdFont-Regular.ttf"
+  if [[ -f "$marker" ]]; then
+    return
+  fi
+  echo "==> Installing JetBrainsMono Nerd Font"
+  mkdir -p "$font_dir"
+  local tmp
+  tmp="$(mktemp -d)"
+  curl -fsSL -o "$tmp/JetBrainsMono.zip" \
+    "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+  unzip -q "$tmp/JetBrainsMono.zip" -d "$font_dir"
+  command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$font_dir" >/dev/null 2>&1
+  rm -rf "$tmp"
+}
+
+install_macos() {
+  echo "==> macOS detected: installing packages via Homebrew"
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "Homebrew not found. Install it from https://brew.sh, then re-run this script." >&2
+    exit 1
+  fi
+  brew bundle install --file="$REPO_ROOT/Brewfile"
+}
+
+install_debian() {
+  echo "==> Debian/Ubuntu detected: installing packages via apt"
+  sudo apt-get update
+  sudo apt-get install -y software-properties-common curl git unzip stow tmux
+  sudo add-apt-repository -y ppa:neovim-ppa/stable
+  sudo apt-get update
+  sudo apt-get install -y neovim
+  install_nerd_font_linux
+}
+
+install_rhel() {
+  echo "==> Rocky/RHEL detected: installing packages via dnf"
+  sudo dnf install -y epel-release
+  sudo dnf install -y neovim tmux git stow curl unzip
+  install_nerd_font_linux
+}
+
+install_tpm() {
+  local tpm_dir="$HOME/.tmux/plugins/tpm"
+  if [[ ! -d "$tpm_dir" ]]; then
+    echo "==> Installing TPM (tmux plugin manager)"
+    git clone --depth=1 https://github.com/tmux-plugins/tpm "$tpm_dir"
+  fi
+}
+
+link_dotfiles() {
+  echo "==> Symlinking dotfiles with stow"
+  command -v stow >/dev/null 2>&1 || { echo "stow not found on PATH after install" >&2; exit 1; }
+  mkdir -p "$HOME/.config"
+  if ! stow --dir="$REPO_ROOT/dotfiles" --target="$HOME" --restow "${STOW_PACKAGES[@]}"; then
+    echo "stow reported conflicts above: a target file already exists and isn't a symlink into this repo." >&2
+    echo "Move or remove the conflicting file(s), then re-run: stow --dir=$REPO_ROOT/dotfiles --target=$HOME --restow ${STOW_PACKAGES[*]}" >&2
+    exit 1
+  fi
+}
+
+main() {
+  local os
+  os="$(detect_os)"
+  case "$os" in
+    macos) install_macos ;;
+    debian) install_debian ;;
+    rhel) install_rhel ;;
+    *)
+      echo "Unsupported or undetected OS. Supported: macOS, Ubuntu/Debian, Rocky/RHEL." >&2
+      exit 1
+      ;;
+  esac
+
+  install_tpm
+  link_dotfiles
+  git config --global core.editor nvim
+
+  echo "==> Done. Open tmux and press 'prefix + I' to install tmux plugins via TPM."
+  echo "==> Open nvim to let it install its plugins/LSP servers on first launch."
+}
+
+main "$@"

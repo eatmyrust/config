@@ -104,7 +104,7 @@ WORKDIR /home/vscode
 ENV PATH=${PATH}:/usr/local/go/bin:/home/vscode/go/bin:/home/vscode/.pulumi/bin
 ENV DOCKER_BUILDKIT=1 \
     JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64/
-COPY --chown=vscode:vscode dotfiles/ /home/vscode/
+COPY --chown=vscode:vscode dotfiles/ /home/vscode/dotfiles/
 
 # ZSH Experience
 RUN sudo chsh -s /bin/zsh vscode && \
@@ -113,10 +113,15 @@ RUN sudo chsh -s /bin/zsh vscode && \
     GITSTATUS_CACHE_DIR=/home/vscode/powerlevel10k/gitstatus/usrbin ~/powerlevel10k/gitstatus/install -f -s "linux" -m "x86_64" && \
     git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git /home/vscode/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting && \
     git clone --depth=1 https://github.com/zsh-users/zsh-completions /home/vscode/.oh-my-zsh/custom/plugins/zsh-completions && \
+    # Retrieve neovim apt index (Ubuntu 22.04's apt package is too old for kickstart.nvim)
+    sudo apt update && \
+    sudo apt -y install software-properties-common && \
+    sudo add-apt-repository -y ppa:neovim-ppa/stable && \
     # Install All Tools
     sudo apt update && \
     sudo apt -y install \
-    vim \
+    neovim \
+    stow \
     dnsutils \
     code \
     nodejs \
@@ -193,10 +198,14 @@ RUN sudo chsh -s /bin/zsh vscode && \
     # Default Dark Theme In Browser
     mkdir -p /home/vscode/.local/share/code-server/User && touch /home/vscode/.local/share/code-server/User/settings.json && \
     echo -n '{"workbench.colorTheme": "Default Dark+"}' > /home/vscode/.local/share/code-server/User/settings.json && \
-    # Install Vim-Plug, Vundle, and plugins
-    curl -fsSLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim && \
-    git clone --depth=1 https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim && \
-    vim -e -u /home/vscode/.vimrc +'PlugInstall --sync' +qa && \
-    vim -e -u /home/vscode/.vimrc +'PluginInstall --sync' +qa
+    # Symlink dotfiles into place with stow (mirrors ./install on the host)
+    mkdir -p /home/vscode/.config && \
+    stow --dir=/home/vscode/dotfiles --target=/home/vscode --restow zsh tmux nvim && \
+    # Install TPM (tmux plugin manager) and its plugins
+    git clone --depth=1 https://github.com/tmux-plugins/tpm /home/vscode/.tmux/plugins/tpm && \
+    /home/vscode/.tmux/plugins/tpm/bin/install_plugins && \
+    # Prewarm Neovim's plugins (installed via the builtin vim.pack on first source)
+    nvim --headless "+qa" && \
+    git config --global core.editor nvim
 
 ENTRYPOINT ["/bin/zsh"]

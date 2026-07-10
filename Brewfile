@@ -1,13 +1,9 @@
 ## Taps
-tap "homebrew/bundle"
-tap "tilt-dev/tap"
-tap "garden-io/garden"
-tap "knative/client"
-tap "aquasecurity/trivy"
-tap "coder/coder"
-tap "styrainc/packages"
-tap "codecrafters-io/tap"
-tap "siderolabs/tap"
+tap "tilt-dev/tap", trusted: true
+tap "knative/client", trusted: true
+tap "aquasecurity/trivy", trusted: true
+tap "coder/coder", trusted: true
+tap "siderolabs/tap", trusted: true
 
 ## Terminal Experience
 brew "zsh"
@@ -26,10 +22,12 @@ brew "jq"
 brew "yq"
 brew "openssl"
 brew "tree"
-brew "vim"
+brew "neovim"
+brew "stow"
 brew "watch"
 brew "wget"
 brew "tmux"
+cask "font-jetbrains-mono-nerd-font"
 
 ## Developer Tooling
 
@@ -43,11 +41,14 @@ brew "trivy"
 brew "convco"
 brew "gh"
 brew "coder/coder/coder"
-brew "codecrafters-io/tap/codecrafters"
+brew "wireguard-tools"
+cask "docker-desktop"
 cask "ngrok"
 cask "1password"
 cask "1password-cli"
 cask "visual-studio-code"
+cask "claude-code"
+vscode "ms-azuretools.vscode-containers"
 vscode "ms-azuretools.vscode-docker"
 vscode "ms-vscode-remote.remote-ssh-edit"
 vscode "ms-vscode-remote.remote-ssh"
@@ -69,9 +70,9 @@ vscode "coder.coder-remote"
 vscode "usernamehw.errorlens"
 vscode "github.vscode-pull-request-github"
 vscode "github.codespaces"
-vscode "github.copilot"
-vscode "github.copilot-chat"
 vscode "fill-labs.dependi"
+vscode "vscodevim.vim"
+vscode "anthropic.claude-code"
 
 ### Cloud
 brew "pulumi"
@@ -103,7 +104,7 @@ vscode "ms-python.debugpy"
 
 ### Open Policy Agent
 brew "opa"
-brew "styrainc/packages/regal"
+brew "regal"
 brew "oras"
 vscode "tsandall.opa"
 
@@ -112,7 +113,6 @@ brew "eksctl"
 brew "helm"
 brew "kube-linter"
 brew "kubernetes-cli"
-brew "openshift-cli"
 brew "minikube"
 brew "stern"
 brew "tilt-dev/tap/ctlptl"
@@ -125,12 +125,8 @@ brew "kubectx"
 brew "kubeseal"
 brew "clusterctl"
 brew "clusterawsadm"
-brew "garden-io/garden/garden-cli"
 brew "siderolabs/tap/talosctl"
 vscode "ms-kubernetes-tools.vscode-kubernetes-tools"
-# bridge to k8s
-vscode "mindaro.mindaro"
-vscode "mindaro-dev.file-downloader"
 
 ## MacOS Enhancements
 cask "rectangle"
@@ -138,12 +134,10 @@ cask "rectangle"
 ## Productivity Tools
 cask "drawio"
 cask "firefox"
+cask "windows-app"
 cask "microsoft-auto-update"
 cask "obsidian"
 cask "spotify"
-
-## Security
-cask "pritunl"
 
 ## Communication Tools
 cask "discord"
