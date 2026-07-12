@@ -122,6 +122,7 @@ RUN sudo chsh -s /bin/zsh vscode && \
     sudo apt -y install \
     neovim \
     stow \
+    build-essential \
     dnsutils \
     code \
     nodejs \
@@ -204,6 +205,12 @@ RUN sudo chsh -s /bin/zsh vscode && \
     # Install TPM (tmux plugin manager) and its plugins
     git clone --depth=1 https://github.com/tmux-plugins/tpm /home/vscode/.tmux/plugins/tpm && \
     /home/vscode/.tmux/plugins/tpm/bin/install_plugins && \
+    # Install tree-sitter CLI (nvim-treesitter shells out to it to build parsers)
+    curl -fsSL -o /tmp/tree-sitter.gz https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-x64.gz && \
+    gunzip /tmp/tree-sitter.gz && \
+    chmod +x /tmp/tree-sitter && \
+    sudo install -m 755 /tmp/tree-sitter /usr/local/bin/tree-sitter && \
+    rm -f /tmp/tree-sitter && \
     # Prewarm Neovim's plugins (installed via the builtin vim.pack on first source)
     nvim --headless "+qa" && \
     git config --global core.editor nvim

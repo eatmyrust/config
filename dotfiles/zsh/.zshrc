@@ -84,7 +84,6 @@ plugins=(
 	helm
 	kubectx
 	lol
-	ripgrep
 	zsh-syntax-highlighting
 )
 
@@ -97,8 +96,13 @@ source $ZSH/oh-my-zsh.sh
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
-# You may need to manually set your language environment
-# export LANG=en_US.UTF-8
+# Language environment. tmux reads this only from the environment of the
+# process that first starts its server (LANG/LC_ALL aren't in tmux's
+# default update-environment passthrough), so an unset locale here silently
+# garbles multi-byte glyphs (Nerd Font icons, box-drawing separators) in
+# the status bar until the server is restarted with this set.
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
 export EDITOR='nvim'

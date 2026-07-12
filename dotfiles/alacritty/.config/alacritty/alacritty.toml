@@ -1,2 +1,11 @@
+general.import = [
+  "~/.config/alacritty/catppuccin-mocha.toml"
+]
+
 [font]
 normal = { family = "JetBrainsMono Nerd Font Mono" }
+
+[window]
+decorations = "buttonless"
+opacity = 0.9
+

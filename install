@@ -46,6 +46,30 @@ install_nerd_font_linux() {
   rm -rf "$tmp"
 }
 
+install_tree_sitter_cli_linux() {
+  if command -v tree-sitter >/dev/null 2>&1; then
+    return
+  fi
+  echo "==> Installing tree-sitter CLI (required by nvim-treesitter to build parsers)"
+  local arch
+  case "$(uname -m)" in
+    x86_64) arch="x64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *)
+      echo "No prebuilt tree-sitter CLI for $(uname -m); install it manually." >&2
+      return
+      ;;
+  esac
+  local tmp
+  tmp="$(mktemp -d)"
+  curl -fsSL -o "$tmp/tree-sitter.gz" \
+    "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-${arch}.gz"
+  gunzip "$tmp/tree-sitter.gz"
+  chmod +x "$tmp/tree-sitter"
+  sudo install -m 755 "$tmp/tree-sitter" /usr/local/bin/tree-sitter
+  rm -rf "$tmp"
+}
+
 install_macos() {
   echo "==> macOS detected: installing packages via Homebrew"
   if ! command -v brew >/dev/null 2>&1; then
@@ -58,18 +82,21 @@ install_macos() {
 install_debian() {
   echo "==> Debian/Ubuntu detected: installing packages via apt"
   sudo apt-get update
-  sudo apt-get install -y software-properties-common curl git unzip stow tmux
+  sudo apt-get install -y software-properties-common curl git unzip stow tmux build-essential
   sudo add-apt-repository -y ppa:neovim-ppa/stable
   sudo apt-get update
   sudo apt-get install -y neovim
   install_nerd_font_linux
+  install_tree_sitter_cli_linux
 }
 
 install_rhel() {
   echo "==> Rocky/RHEL detected: installing packages via dnf"
   sudo dnf install -y epel-release
+  sudo dnf groupinstall -y "Development Tools"
   sudo dnf install -y neovim tmux git stow curl unzip
   install_nerd_font_linux
+  install_tree_sitter_cli_linux
 }
 
 install_tpm() {
