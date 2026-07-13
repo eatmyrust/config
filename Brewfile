@@ -4,6 +4,7 @@ tap "knative/client", trusted: true
 tap "aquasecurity/trivy", trusted: true
 tap "coder/coder", trusted: true
 tap "siderolabs/tap", trusted: true
+tap "my-monkeys/tap", trusted: true
 
 ## Terminal Experience
 brew "zsh"
