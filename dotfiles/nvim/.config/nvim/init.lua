@@ -497,7 +497,13 @@ do
     --   },
     -- },
     defaults = {
-      file_ignore_patterns = { '%.git/' },
+      file_ignore_patterns = {
+        '%.git/',
+        '%.terragrunt%-download/',
+        '%.terragrunt%-cache/',
+        '%.terraform%-plugin%-cache/',
+        '%.DS_Store$',
+      },
     },
     pickers = {
       find_files = {
