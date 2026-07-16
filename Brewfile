@@ -8,6 +8,7 @@ tap "my-monkeys/tap", trusted: true
 
 ## Terminal Experience
 brew "zsh"
+brew "bash"
 cask "alacritty"
 
 ## Better Shell Tooling

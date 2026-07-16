@@ -104,34 +104,30 @@ source $ZSH/oh-my-zsh.sh
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# Preferred editor for local and remote sessions
 export EDITOR='nvim'
 export VISUAL='nvim'
 
-# Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+export PATH="/opt/nvim-linux-x86_64/bin:/opt/homebrew/bin:$PATH"
+export SHELL="$(which zsh)"
+export DISABLE_AUTO_UPDATE=true
+export DISABLE_UPDATE_PROMPT=true
 
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
-# For a full list of active aliases, run `alias`.
-#
-# Example aliases
-# alias zshconfig="mate ~/.zshrc"
-# alias ohmyzsh="mate ~/.oh-my-zsh"
-DISABLE_AUTO_UPDATE=true
-DISABLE_UPDATE_PROMPT=true
+export TG_TF_FORWARD_STDOUT=1
+
+unset TMOUT
+
+alias git-user='git config user.name'
+alias git-email='git config user.email'
+alias gr='cd $(git rev-parse --show-toplevel)'
+alias vim='nvim'
+alias tg='terragrunt'
 
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# Add some cool aliases
-alias git-user='git config user.name'
-alias git-email='git config user.email'
-alias gr='cd $(git rev-parse --show-toplevel)'
-alias vim='nvim'
+
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"

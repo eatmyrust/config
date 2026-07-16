@@ -361,6 +361,12 @@ do
     },
   }
 
+  -- A Git wrapper so awesome, it should be illegal.
+  -- Adds the `:Git` command (and shorthand `:G`) for running git from within Neovim.
+  -- See `:help fugitive` for the full command list, e.g. `:Git blame`, `:Gdiffsplit`, `:Git push`.
+  vim.pack.add { gh 'tpope/vim-fugitive' }
+  vim.keymap.set('n', '<leader>gs', vim.cmd.Git, { desc = '[G]it [S]tatus' })
+
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
   require('which-key').setup {
@@ -371,6 +377,7 @@ do
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
+      { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
