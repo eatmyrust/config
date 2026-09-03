@@ -107,7 +107,7 @@ export LC_ALL=en_US.UTF-8
 export EDITOR='nvim'
 export VISUAL='nvim'
 
-export PATH="/opt/nvim-linux-x86_64/bin:/opt/homebrew/bin:$PATH"
+export PATH="$HOME/.local/bin:/opt/nvim-linux-x86_64/bin:/opt/homebrew/bin:$PATH"
 export SHELL="$(which zsh)"
 export DISABLE_AUTO_UPDATE=true
 export DISABLE_UPDATE_PROMPT=true
@@ -121,14 +121,17 @@ alias git-email='git config user.email'
 alias gr='cd $(git rev-parse --show-toplevel)'
 alias vim='nvim'
 alias tg='terragrunt'
+# tree is no longer installed; lsd (from mise) covers it.
+alias tree='lsd --tree'
 
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate zsh)"
+fi
 
+command -v fzf >/dev/null 2>&1 && source <(fzf --zsh)
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

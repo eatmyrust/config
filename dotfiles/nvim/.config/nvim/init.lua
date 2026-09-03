@@ -361,11 +361,11 @@ do
     },
   }
 
-  -- A Git wrapper so awesome, it should be illegal.
-  -- Adds the `:Git` command (and shorthand `:G`) for running git from within Neovim.
-  -- See `:help fugitive` for the full command list, e.g. `:Git blame`, `:Gdiffsplit`, `:Git push`.
-  vim.pack.add { gh 'tpope/vim-fugitive' }
-  vim.keymap.set('n', '<leader>gs', vim.cmd.Git, { desc = '[G]it [S]tatus' })
+  -- A simple plugin for calling lazygit from within Neovim.
+  -- Requires `lazygit` to be installed and on your $PATH.
+  -- See https://github.com/kdheepak/lazygit.nvim
+  vim.pack.add { gh 'kdheepak/lazygit.nvim' }
+  vim.keymap.set('n', '<leader>gg', vim.cmd.LazyGit, { desc = '[G]it [G]ui (lazygit)' })
 
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
@@ -784,7 +784,8 @@ do
     -- You can add other tools here that you want Mason to install
   })
 
-  require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+  require('mason-tool-installer').setup { ensure_installed = ensure_installed, run_on_start = false }
+  require('mason-tool-installer').check_install(false, true)
 
   for name, server in pairs(servers) do
     vim.lsp.config(name, server)
@@ -952,7 +953,12 @@ do
     'rust',
     'json',
   }
-  require('nvim-treesitter').install(parsers)
+  -- `install()` is async by default (see `:help nvim-treesitter.install()`);
+  -- `:wait()` makes the initial (first-run) install block instead of racing
+  -- against `install`'s `nvim --headless "+qa"` warm-up, which otherwise
+  -- quits before the parsers finish downloading. Once installed, this is a
+  -- fast no-op on every later startup.
+  require('nvim-treesitter').install(parsers):wait(300000)
 
   ---@param buf integer
   ---@param language string

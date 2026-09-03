@@ -1,0 +1,84 @@
+# Global mise config: dev tools available on every machine, every OS.
+#
+# Scope: CLI dev tools only. System libraries, login shells, GNU userland, and
+# GUI apps stay in Brewfile (macOS) / apt / dnf — see docs/mise-migration.md.
+#
+# Versions are declared loosely here and pinned exactly in config.lock, which is
+# committed. Use `mise upgrade` to move within a range, `mise upgrade --bump` to
+# move the range itself.
+
+[settings]
+# Resolve every "latest"/"lts" into config.lock with checksums, so a fresh
+# machine reproduces this one exactly.
+lockfile = true
+# Don't let a mistyped command trigger a surprise install.
+not_found_auto_install = false
+
+[tools]
+
+## Shell tooling
+bat         = "latest"
+ripgrep     = "latest"
+jq          = "latest"
+yq          = "latest"
+fzf         = "latest"
+tmux        = "latest"
+lazygit     = "latest"
+lsd         = "latest"
+coreutils   = "latest"
+tree-sitter = "latest"
+"aqua:neovim/neovim" = "latest"
+
+## Generic developer tooling
+apko           = "latest"
+"docker-cli"   = "latest"
+task           = "latest"
+trivy          = "latest"
+"github-cli"   = "latest"
+coder          = "latest"
+"claude-code"  = "latest"
+"github:convco/convco" = "latest"
+"aws-cli"      = "latest"
+argocd         = "latest"
+packer         = "latest"
+crane          = "latest"
+op             = "latest"
+
+## Languages and language servers
+go   = "latest"
+node = "lts"
+uv   = "latest"
+ko   = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
+java = "temurin-17"
+
+## Policy
+opa   = "latest"
+regal = "latest"
+oras  = "latest"
+
+## Cloud
+pulumi     = "latest"
+terraform  = "latest"
+opentofu   = "latest"
+terragrunt = "latest"
+
+## Kubernetes
+kubectl       = "latest"
+helm          = "latest"
+k9s           = "latest"
+kind          = "latest"
+minikube      = "latest"
+stern         = "latest"
+kubectx       = "latest"
+kubens        = "latest"
+kubeseal      = "latest"
+kube-linter   = "latest"
+eksctl        = "latest"
+vcluster      = "latest"
+argo          = "latest"
+ctlptl        = "latest"
+tilt          = "latest"
+clusterctl    = "latest"
+clusterawsadm = "latest"
+talosctl      = "latest"

@@ -1,13 +1,44 @@
 #!/usr/bin/env bash
 #
-# Bootstraps this machine: installs packages via the native package manager
-# for the detected OS (Homebrew on macOS, apt+PPA on Ubuntu/Debian, dnf+EPEL
-# on Rocky/RHEL), then symlinks dotfiles/ into place with GNU Stow.
+# Bootstraps this machine in four layers:
+#
+#   1. Base system packages via the native package manager (Homebrew on macOS,
+#      apt on Ubuntu/Debian, dnf+EPEL on Rocky/RHEL) — only what mise cannot
+#      provide: login shells, system libraries, GUI apps, the build toolchain.
+#   2. The zsh framework (oh-my-zsh, powerlevel10k, and the syntax-highlighting
+#      and completions plugins) and the tmux plugin manager — git-cloned,
+#      since neither ships a package for every platform this script targets.
+#   3. Dotfiles symlinked into place with GNU Stow.
+#   4. Cross-platform dev tools via mise, from dotfiles/mise/.config/mise/,
+#      pinned by the committed mise.lock — identical on every OS.
+#
+# Then warms up nvim (installs its plugins, LSP servers, and treesitter
+# parsers) and restores the Claude Code setup (settings, statusline, agent
+# skills, plugins). See docs/mise-migration.md.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STOW_PACKAGES=(zsh tmux nvim alacritty)
+STOW_PACKAGES=(zsh tmux nvim alacritty mise)
+STOW_PACKAGES_UNFOLDED=(claude agents)
+
+CLAUDE_MARKETPLACES=(anthropics/claude-plugins-official)
+CLAUDE_PLUGINS=(gopls-lsp@claude-plugins-official)
+
+# Third-party agent skills, fetched at install time via the Skills CLI
+# (npx skills) instead of being vendored into dotfiles/agents/.agents/skills/
+# — that directory holds only custom skills. Bump these lists when adopting
+# a new skill; if a name gets renamed upstream, `npx skills add <source> -l`
+# lists what's currently available.
+THIRDPARTY_SKILLS_MATTPOCOCK=(
+  ask-matt code-review codebase-design diagnosing-bugs domain-modeling
+  grill-me grill-with-docs grilling handoff implement
+  improve-codebase-architecture prototype research setup-matt-pocock-skills
+  tdd teach to-spec to-tickets triage wayfinder writing-for-agents
+)
+THIRDPARTY_SKILLS_VERCEL_LABS=(find-skills)
+
+MISE_BIN="$HOME/.local/bin/mise"
 
 detect_os() {
   case "$(uname -s)" in
@@ -46,28 +77,27 @@ install_nerd_font_linux() {
   rm -rf "$tmp"
 }
 
-install_tree_sitter_cli_linux() {
-  if command -v tree-sitter >/dev/null 2>&1; then
+install_mise() {
+  if command -v mise >/dev/null 2>&1; then
+    MISE_BIN="$(command -v mise)"
     return
   fi
-  echo "==> Installing tree-sitter CLI (required by nvim-treesitter to build parsers)"
-  local arch
-  case "$(uname -m)" in
-    x86_64) arch="x64" ;;
-    aarch64|arm64) arch="arm64" ;;
-    *)
-      echo "No prebuilt tree-sitter CLI for $(uname -m); install it manually." >&2
-      return
-      ;;
-  esac
-  local tmp
-  tmp="$(mktemp -d)"
-  curl -fsSL -o "$tmp/tree-sitter.gz" \
-    "https://github.com/tree-sitter/tree-sitter/releases/latest/download/tree-sitter-linux-${arch}.gz"
-  gunzip "$tmp/tree-sitter.gz"
-  chmod +x "$tmp/tree-sitter"
-  sudo install -m 755 "$tmp/tree-sitter" /usr/local/bin/tree-sitter
-  rm -rf "$tmp"
+  if [[ -x "$MISE_BIN" ]]; then
+    return
+  fi
+  echo "==> Installing mise"
+  curl -fsSL https://mise.run | sh
+  [[ -x "$MISE_BIN" ]] || { echo "mise install failed: $MISE_BIN not found" >&2; exit 1; }
+}
+
+install_mise_tools() {
+  echo "==> Installing dev tools with mise (first run downloads a lot; later runs are quick)"
+  MISE_YES=1 "$MISE_BIN" install
+}
+
+warm_up_nvim() {
+  echo "==> Warming up nvim (installing plugins, LSP servers, and treesitter parsers)"
+  "$MISE_BIN" exec -- nvim --headless "+qa"
 }
 
 install_macos() {
@@ -80,23 +110,19 @@ install_macos() {
 }
 
 install_debian() {
-  echo "==> Debian/Ubuntu detected: installing packages via apt"
+  echo "==> Debian/Ubuntu detected: installing base packages via apt"
   sudo apt-get update
-  sudo apt-get install -y software-properties-common curl git unzip stow tmux build-essential
-  sudo add-apt-repository -y ppa:neovim-ppa/stable
-  sudo apt-get update
-  sudo apt-get install -y neovim
+  sudo apt-get install -y \
+    build-essential curl git unzip stow zsh wget
   install_nerd_font_linux
-  install_tree_sitter_cli_linux
 }
 
 install_rhel() {
-  echo "==> Rocky/RHEL detected: installing packages via dnf"
+  echo "==> Rocky/RHEL detected: installing base packages via dnf"
   sudo dnf install -y epel-release
   sudo dnf groupinstall -y "Development Tools"
-  sudo dnf install -y neovim tmux git stow curl unzip
+  sudo dnf install -y curl git unzip stow zsh wget
   install_nerd_font_linux
-  install_tree_sitter_cli_linux
 }
 
 install_tpm() {
@@ -104,6 +130,31 @@ install_tpm() {
   if [[ ! -d "$tpm_dir" ]]; then
     echo "==> Installing TPM (tmux plugin manager)"
     git clone --depth=1 https://github.com/tmux-plugins/tpm "$tpm_dir"
+  fi
+  echo "==> Installing tmux plugins via TPM"
+  "$MISE_BIN" exec -- "$tpm_dir/bin/install_plugins"
+}
+
+install_zsh_framework() {
+  if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+    echo "==> Installing oh-my-zsh"
+    git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
+  fi
+  if [[ ! -d "$HOME/powerlevel10k" ]]; then
+    echo "==> Installing powerlevel10k"
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/powerlevel10k"
+    # No -s/-m: let gitstatus detect the local OS/arch rather than hardcoding
+    # one, since this function now also runs on macOS and arm64 hosts.
+    GITSTATUS_CACHE_DIR="$HOME/powerlevel10k/gitstatus/usrbin" "$HOME/powerlevel10k/gitstatus/install" -f
+  fi
+  local custom="$HOME/.oh-my-zsh/custom"
+  if [[ ! -d "$custom/plugins/zsh-syntax-highlighting" ]]; then
+    echo "==> Installing zsh-syntax-highlighting plugin"
+    git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom/plugins/zsh-syntax-highlighting"
+  fi
+  if [[ ! -d "$custom/plugins/zsh-completions" ]]; then
+    echo "==> Installing zsh-completions plugin"
+    git clone --depth=1 https://github.com/zsh-users/zsh-completions.git "$custom/plugins/zsh-completions"
   fi
 }
 
@@ -116,6 +167,92 @@ link_dotfiles() {
     echo "Move or remove the conflicting file(s), then re-run: stow --dir=$REPO_ROOT/dotfiles --target=$HOME --restow ${STOW_PACKAGES[*]}" >&2
     exit 1
   fi
+  if ! stow --dir="$REPO_ROOT/dotfiles" --target="$HOME" --no-folding --restow "${STOW_PACKAGES_UNFOLDED[@]}"; then
+    echo "stow reported conflicts above for ${STOW_PACKAGES_UNFOLDED[*]}." >&2
+    echo "Claude Code rewrites ~/.claude/settings.json in place when you change settings via /config," >&2
+    echo "which can replace the symlink with a real file. Compare it against" >&2
+    echo "$REPO_ROOT/dotfiles/claude/.claude/settings.json, keep whichever you want, then re-run:" >&2
+    echo "  stow --dir=$REPO_ROOT/dotfiles --target=$HOME --no-folding --restow ${STOW_PACKAGES_UNFOLDED[*]}" >&2
+    exit 1
+  fi
+}
+
+# Fetch third-party agent skills with the Skills CLI (npx skills) straight
+# into ~/.agents/skills, rather than vendoring them into this repo.
+install_thirdparty_skills() {
+  local npx_bin
+  if command -v npx >/dev/null 2>&1; then
+    npx_bin="npx"
+  elif npx_bin="$("$MISE_BIN" which npx 2>/dev/null)" && [[ -n "$npx_bin" ]]; then
+    :
+  else
+    echo "npx not found via PATH or mise; skipping third-party skill install" >&2
+    return 0
+  fi
+
+  echo "==> Installing third-party agent skills via the Skills CLI (npx skills)"
+  _install_skill_source "$npx_bin" mattpocock/skills "${THIRDPARTY_SKILLS_MATTPOCOCK[@]}"
+  _install_skill_source "$npx_bin" vercel-labs/skills "${THIRDPARTY_SKILLS_VERCEL_LABS[@]}"
+}
+
+_install_skill_source() {
+  local npx_bin="$1" source="$2"
+  shift 2
+  local skill args=()
+  for skill in "$@"; do
+    args+=(--skill "$skill")
+  done
+  "$npx_bin" --yes skills add "$source" -g -y "${args[@]}" ||
+    echo "  failed to install skills from $source; run manually with: npx skills add $source -g -y --skill <name>" >&2
+}
+
+# Claude Code discovers skills in ~/.claude/skills; the Skills CLI (npx skills)
+# owns them in ~/.agents/skills. Mirror the latter into the former, matching the
+# relative symlinks the CLI itself creates.
+link_agent_skills() {
+  local src="$HOME/.agents/skills"
+  local dest="$HOME/.claude/skills"
+  [[ -d "$src" ]] || return 0
+  echo "==> Linking agent skills into $dest"
+  mkdir -p "$dest"
+  local skill name
+  for skill in "$src"/*/; do
+    name="$(basename "$skill")"
+    if [[ -e "$dest/$name" && ! -L "$dest/$name" ]]; then
+      echo "  skipping $name: $dest/$name exists and is not a symlink" >&2
+      continue
+    fi
+    ln -sfn "../../.agents/skills/$name" "$dest/$name"
+  done
+}
+
+install_claude_plugins() {
+  # claude is a mise-managed tool now, and this script never activates mise, so
+  # it is NOT on PATH here even though it is in an interactive shell. Ask mise
+  # for the path before giving up.
+  local claude
+  if command -v claude >/dev/null 2>&1; then
+    claude="claude"
+  elif claude="$("$MISE_BIN" which claude 2>/dev/null)" && [[ -n "$claude" ]]; then
+    :
+  else
+    echo "claude not found via PATH or mise; skipping plugin install" >&2
+    return 0
+  fi
+  local marketplace plugin
+  for marketplace in "${CLAUDE_MARKETPLACES[@]}"; do
+    "$claude" plugin marketplace add "$marketplace" >/dev/null 2>&1 || true
+  done
+  local installed
+  installed="$("$claude" plugin list 2>/dev/null || true)"
+  for plugin in "${CLAUDE_PLUGINS[@]}"; do
+    if grep -q "${plugin%%@*}" <<<"$installed"; then
+      continue
+    fi
+    echo "==> Installing Claude Code plugin $plugin"
+    "$claude" plugin install "$plugin" ||
+      echo "  failed; install it manually with: claude plugin install $plugin" >&2
+  done
 }
 
 main() {
@@ -131,12 +268,20 @@ main() {
       ;;
   esac
 
-  install_tpm
+  install_mise
+  install_zsh_framework
   link_dotfiles
+  install_mise_tools
+  install_tpm
+  warm_up_nvim
+  install_thirdparty_skills
+  link_agent_skills
+  install_claude_plugins
   git config --global core.editor nvim
 
-  echo "==> Done. Open tmux and press 'prefix + I' to install tmux plugins via TPM."
-  echo "==> Open nvim to let it install its plugins/LSP servers on first launch."
+  echo "==> Done."
+  echo "==> Start a new shell so mise activates; check it with 'mise doctor'."
+  echo "==> Run 'claude' and sign in; auth is machine-local and not tracked in this repo."
 }
 
 main "$@"

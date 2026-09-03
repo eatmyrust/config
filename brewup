@@ -2,6 +2,16 @@
 
 set -euxo pipefail
 
+# The Brewfile path below is relative, so anchor to the repo regardless of where
+# this was invoked from.
+cd "$(dirname "$0")"
+
+# This script runs under bash and never sources .zshrc, so mise is never
+# "activated" here -- it has to be called by explicit path, same as in `install`.
+MISE_BIN="$HOME/.local/bin/mise"
+
+# --- Homebrew: system packages only (shells, GNU userland, libraries) ---
+
 brew bundle install --file=./Brewfile
 
 brew bundle cleanup --force --file=./Brewfile
@@ -11,3 +21,41 @@ brew update --auto-update
 brew upgrade
 
 brew cleanup --prune=7
+
+# --- mise: developer tooling ---
+
+# `mise lock` refreshes every tool across every platform via the GitHub API,
+# which is well past the 60 requests/hour GitHub allows unauthenticated callers.
+# `gh` has a token but keeps it in the macOS Keychain rather than hosts.yml, so
+# mise cannot read it on its own (`mise token github` prints "(none)"); hand it
+# over explicitly. Tracing is off for this block so the token stays out of the
+# terminal and any captured logs.
+set +x
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  gh_bin="$("$MISE_BIN" which gh 2>/dev/null || true)"
+  if [[ -n "$gh_bin" ]] && gh_token="$("$gh_bin" auth token 2>/dev/null)"; then
+    export GITHUB_TOKEN="$gh_token"
+    echo "+ using gh's GitHub token for mise"
+  else
+    echo "+ no GitHub token available; mise may hit API rate limits" >&2
+  fi
+fi
+set -x
+
+"$MISE_BIN" self-update -y
+
+"$MISE_BIN" upgrade
+
+# Installing and upgrading only touch this machine's platform entry. This
+# refreshes all seven, keeping the Linux and Windows entries -- the ones the
+# Docker build depends on -- from going stale.
+"$MISE_BIN" lock --global
+
+# Drop tool versions no longer referenced by any tracked config.
+#
+# Caveat as of mise 2026.9.1: this is a no-op for tools. `--dry-run` lists the
+# versions it would remove, but the real run removes none and still exits 0, so
+# orphans accumulate silently. Bare `mise prune` (no --tools) only prunes stale
+# config links. Until that is fixed, check with `mise ls --prunable` and remove
+# them by hand with `mise uninstall <tool>@<version>`.
+"$MISE_BIN" prune --tools
