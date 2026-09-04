@@ -44,6 +44,6 @@ COPY --chown=dev:dev . /home/dev/config/
 
 RUN /home/dev/config/install && \
     sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /home/dev/workdir
+    mkdir -p /home/dev/workdir /home/dev/.kube
 
 ENTRYPOINT ["/bin/zsh"]

@@ -1,0 +1,528 @@
+#!/usr/bin/env bash
+#
+# Runs the dev container with a narrow, named slice of this machine's
+# credentials instead of the whole of $HOME.
+#
+# A profile (profiles/<name>.env in this repo, or
+# ~/.config/devbox/profiles/<name>.env for machine-local ones) names *which*
+# access to hand over. It holds no secrets, only references, so it is safe to
+# commit. At launch devbox mints credentials for exactly that slice into a 0700
+# scratch directory, bind-mounts them in, and deletes the directory when the
+# container exits.
+#
+# Credentials are minted fresh rather than copied wherever the provider can
+# issue them, so what lands in the container expires on its own:
+#
+#   aws     sts assume-role, or export-credentials followed by get-session-token
+#   kube    a bounded ServiceAccount token, or the context's own exec plugin
+#   github  a GitHub App installation token (1 hour)
+#
+# Nothing that could mint credentials for a *different* environment is passed
+# in: no ~/.aws/sso/cache, no ~/.aws/config, no kube context other than the
+# named one, no personal gh token.
+#
+# Run `devbox --help` for the profile format.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+IMAGE="${DEVBOX_IMAGE:-devbox:latest}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# This script runs under bash and never sources .zshrc, so mise is not
+# "activated" here -- tools have to be looked up explicitly, same as in `install`.
+MISE_BIN="$HOME/.local/bin/mise"
+
+CRED_DIR=""
+PROFILE_NAME=""
+
+# Human-readable one-liners for the launch banner, filled in as each provider
+# is minted.
+SUMMARY_AWS=""
+SUMMARY_KUBE=""
+SUMMARY_GITHUB=""
+
+die() { echo "devbox: $*" >&2; exit 1; }
+warn() { echo "devbox: warning: $*" >&2; }
+
+cleanup() {
+  [[ -n "$CRED_DIR" && -d "$CRED_DIR" ]] && rm -rf "$CRED_DIR"
+  return 0
+}
+trap cleanup EXIT
+
+find_bin() {
+  local name="$1" path
+  if path="$(command -v "$name" 2>/dev/null)" && [[ -n "$path" ]]; then
+    printf '%s' "$path"
+    return 0
+  fi
+  if [[ -x "$MISE_BIN" ]] && path="$("$MISE_BIN" which "$name" 2>/dev/null)" && [[ -n "$path" ]]; then
+    printf '%s' "$path"
+    return 0
+  fi
+  return 1
+}
+
+need_bin() {
+  local path
+  path="$(find_bin "$1")" ||
+    die "$1 not found on PATH or via mise${PROFILE_NAME:+, and profile '$PROFILE_NAME' needs it}${2:+ ($2)}"
+  printf '%s' "$path"
+}
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  devbox <profile> [command...]   run the dev container with that profile's credentials
+  devbox --list                   list available profiles
+  devbox --build                  rebuild the image
+  devbox --help
+
+Profiles are read from, in order of precedence:
+  ~/.config/devbox/profiles/<name>.env    machine-local, untracked
+  <repo>/profiles/<name>.env              committed
+
+A profile is a shell fragment of KEY=value lines, so quote any value that
+contains spaces. Every key is optional; omit a provider's keys entirely and the
+container gets no access to that provider.
+
+  DEVBOX_DESCRIPTION      one line shown by --list and at launch
+
+AWS -- minted with the host's profile, never handed the SSO cache
+  AWS_SOURCE_PROFILE      host profile used to mint (from ~/.aws/config)
+  AWS_ROLE_ARN            assume this role instead of exporting the profile;
+                          strongly preferred, it scopes as well as expires
+  AWS_ROLE_EXTERNAL_ID    external id, when the trust policy requires one
+  AWS_SESSION_DURATION    seconds, default 3600
+  AWS_REGION              region written into the container's ~/.aws/config
+
+Kubernetes -- one context, re-issued as a token where possible
+  KUBE_CONTEXT            host context to expose (required for any kube access)
+  KUBE_NAMESPACE          namespace to default to
+  KUBE_SERVICE_ACCOUNT    mint a bounded token for this ServiceAccount rather
+                          than copying the context's own credentials
+  KUBE_TOKEN_DURATION     ServiceAccount token lifetime, default 8h
+
+GitHub -- an installation token beats any personal token
+  GITHUB_APP_ID              app id
+  GITHUB_APP_INSTALLATION_ID installation id
+  GITHUB_APP_PRIVATE_KEY_REF reference to the app's PEM (see references below)
+  GITHUB_APP_REPOSITORIES    comma-separated repo names (not owner/repo) to
+                             scope the token to; default is the whole installation
+  GITHUB_TOKEN_REF           fall back to an existing token by reference, for
+                             machines with no app configured
+
+References resolve on the host at launch. Nothing but the resolved value enters
+the container:
+  op://Vault/Item/field     1Password CLI
+  env:VAR_NAME              an already-exported host variable
+  file:~/path/to/secret     a file on the host
+  keychain:service-name     macOS Keychain (security find-generic-password)
+  cmd:some command here     stdout of a host command; the portable escape hatch
+                            for vault, pass, or a bespoke token minter
+
+Environment:
+  DEVBOX_IMAGE      image tag to run, default devbox:latest
+  DEVBOX_WORKDIR    host directory mounted at /home/dev/workdir, default $PWD
+USAGE
+}
+
+profile_path() {
+  local name="$1" dir
+  for dir in "$CONFIG_HOME/devbox/profiles" "$REPO_ROOT/profiles"; do
+    if [[ -f "$dir/$name.env" ]]; then
+      printf '%s' "$dir/$name.env"
+      return 0
+    fi
+  done
+  return 1
+}
+
+list_profiles() {
+  local dir file name desc seen=" "
+  for dir in "$CONFIG_HOME/devbox/profiles" "$REPO_ROOT/profiles"; do
+    [[ -d "$dir" ]] || continue
+    for file in "$dir"/*.env; do
+      [[ -f "$file" ]] || continue
+      name="$(basename "$file" .env)"
+      case "$seen" in *" $name "*) continue ;; esac
+      seen="$seen$name "
+      desc="$(. "$file" >/dev/null 2>&1; printf '%s' "${DEVBOX_DESCRIPTION:-}")" || desc=""
+      printf '  %-18s %s\n' "$name" "$desc"
+    done
+  done
+}
+
+# Resolve a secret reference to its value on stdout. Never echoes the value
+# anywhere else, and never writes the reference's source into the container.
+resolve_ref() {
+  local ref="$1" name path
+  case "$ref" in
+    op://*)
+      local op_bin
+      op_bin="$(need_bin op "resolving $ref")"
+      "$op_bin" read "$ref"
+      ;;
+    env:*)
+      name="${ref#env:}"
+      [[ -n "${!name:-}" ]] || die "reference '$ref' resolves to an empty or unset variable"
+      printf '%s' "${!name}"
+      ;;
+    file:*)
+      path="${ref#file:}"
+      path="${path/#\~/$HOME}"
+      [[ -r "$path" ]] || die "reference '$ref' names a file that does not exist or is not readable"
+      cat "$path"
+      ;;
+    keychain:*)
+      command -v security >/dev/null 2>&1 ||
+        die "reference '$ref' needs the macOS 'security' command, which this machine does not have"
+      security find-generic-password -w -s "${ref#keychain:}" ||
+        die "reference '$ref' not found in the login keychain"
+      ;;
+    cmd:*)
+      bash -c "${ref#cmd:}" || die "reference '$ref' exited non-zero"
+      ;;
+    *)
+      die "unsupported reference '$ref'; see devbox --help for the supported schemes"
+      ;;
+  esac
+}
+
+add_env() {
+  printf '%s=%s\n' "$1" "$2" >> "$CRED_DIR/env"
+}
+
+# --- AWS -------------------------------------------------------------------
+
+AWS_BIN=""
+
+# Every host-side call is pinned to the profile the devbox profile names, with
+# any ambient credentials stripped, so an exported AWS_PROFILE or stray access
+# key in the caller's shell cannot silently redirect which account we mint from.
+host_aws() {
+  local args=()
+  if [[ -n "${AWS_SOURCE_PROFILE:-}" ]]; then
+    args+=(--profile "$AWS_SOURCE_PROFILE")
+  fi
+  env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
+      -u AWS_PROFILE -u AWS_DEFAULT_PROFILE \
+      "$AWS_BIN" ${args[@]+"${args[@]}"} "$@"
+}
+
+mint_aws() {
+  if [[ -z "${AWS_SOURCE_PROFILE:-}" && -z "${AWS_ROLE_ARN:-}" ]]; then
+    return 0
+  fi
+
+  local jq_bin dur akid secret token expiry identity json how
+  AWS_BIN="$(need_bin aws "profile sets AWS_SOURCE_PROFILE or AWS_ROLE_ARN")"
+  jq_bin="$(need_bin jq)"
+  dur="${AWS_SESSION_DURATION:-3600}"
+  token=""
+  expiry=""
+
+  if [[ -n "${AWS_ROLE_ARN:-}" ]]; then
+    local session extra=()
+    session="devbox-$(printf '%s' "$PROFILE_NAME" | tr -c 'A-Za-z0-9=,.@_-' '-')"
+    session="${session:0:64}"
+    if [[ -n "${AWS_ROLE_EXTERNAL_ID:-}" ]]; then
+      extra+=(--external-id "$AWS_ROLE_EXTERNAL_ID")
+    fi
+    json="$(host_aws sts assume-role \
+      --role-arn "$AWS_ROLE_ARN" \
+      --role-session-name "$session" \
+      --duration-seconds "$dur" \
+      ${extra[@]+"${extra[@]}"} \
+      --output json)" || die "could not assume $AWS_ROLE_ARN"
+    akid="$("$jq_bin" -r '.Credentials.AccessKeyId' <<<"$json")"
+    secret="$("$jq_bin" -r '.Credentials.SecretAccessKey' <<<"$json")"
+    token="$("$jq_bin" -r '.Credentials.SessionToken' <<<"$json")"
+    expiry="$("$jq_bin" -r '.Credentials.Expiration' <<<"$json")"
+    identity="$("$jq_bin" -r '.AssumedRoleUser.Arn' <<<"$json")"
+    how="assumed role"
+  else
+    local exported
+    exported="$(host_aws configure export-credentials --format env-no-export)" ||
+      die "could not export credentials for AWS profile '$AWS_SOURCE_PROFILE'"
+    akid="$(sed -n 's/^AWS_ACCESS_KEY_ID=//p' <<<"$exported")"
+    secret="$(sed -n 's/^AWS_SECRET_ACCESS_KEY=//p' <<<"$exported")"
+    token="$(sed -n 's/^AWS_SESSION_TOKEN=//p' <<<"$exported")"
+    expiry="$(sed -n 's/^AWS_CREDENTIAL_EXPIRATION=//p' <<<"$exported")"
+    how="exported session"
+
+    # A profile backed by static IAM user keys exports the key itself, which
+    # never expires. Trade it for a session so the long-lived key stays on the
+    # host, even though the permissions are the same.
+    if [[ -z "$token" ]]; then
+      if json="$(host_aws sts get-session-token --duration-seconds "$dur" --output json 2>/dev/null)"; then
+        akid="$("$jq_bin" -r '.Credentials.AccessKeyId' <<<"$json")"
+        secret="$("$jq_bin" -r '.Credentials.SecretAccessKey' <<<"$json")"
+        token="$("$jq_bin" -r '.Credentials.SessionToken' <<<"$json")"
+        expiry="$("$jq_bin" -r '.Credentials.Expiration' <<<"$json")"
+        how="session traded for static keys"
+      else
+        warn "AWS profile '$AWS_SOURCE_PROFILE' has static keys and get-session-token failed, so the key itself goes into the container and does not expire. Point AWS_ROLE_ARN at a role to fix this."
+        how="static keys, no expiry"
+      fi
+    fi
+
+    local minted=(AWS_ACCESS_KEY_ID="$akid" AWS_SECRET_ACCESS_KEY="$secret")
+    if [[ -n "$token" ]]; then
+      minted+=(AWS_SESSION_TOKEN="$token")
+    fi
+    identity="$(env -u AWS_PROFILE -u AWS_DEFAULT_PROFILE "${minted[@]}" \
+      "$AWS_BIN" sts get-caller-identity --query Arn --output text 2>/dev/null)" || identity="unverified"
+  fi
+
+  mkdir -p "$CRED_DIR/aws"
+  {
+    echo "[default]"
+    echo "aws_access_key_id=$akid"
+    echo "aws_secret_access_key=$secret"
+    if [[ -n "$token" ]]; then
+      echo "aws_session_token=$token"
+    fi
+  } > "$CRED_DIR/aws/credentials"
+
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    printf '[default]\nregion=%s\n' "$AWS_REGION" > "$CRED_DIR/aws/config"
+  fi
+
+  # The container user's uid does not match this host user's, and a bind mount
+  # carries the host mode through, so 0600 would be unreadable inside. The
+  # scratch directory itself is 0700, which is what keeps other host users out.
+  chmod 0644 "$CRED_DIR/aws"/*
+
+  SUMMARY_AWS="$identity  ($how${expiry:+, expires $expiry})"
+}
+
+# --- Kubernetes ------------------------------------------------------------
+
+mint_kube() {
+  if [[ -z "${KUBE_CONTEXT:-}" ]]; then
+    return 0
+  fi
+
+  local kubectl_bin jq_bin view server ca insecure ns token how kube_cfg
+  kubectl_bin="$(need_bin kubectl "profile sets KUBE_CONTEXT")"
+  jq_bin="$(need_bin jq)"
+  view="$CRED_DIR/.context.json"
+  kube_cfg="$CRED_DIR/kubeconfig"
+
+  # --minify drops every cluster, user, and context except the one named, and
+  # --flatten inlines the certificate files they reference.
+  "$kubectl_bin" config view --minify --flatten --context="$KUBE_CONTEXT" -o json > "$view" 2>/dev/null ||
+    die "context '$KUBE_CONTEXT' is not in this machine's kubeconfig"
+
+  server="$("$jq_bin" -r '.clusters[0].cluster.server // empty' "$view")"
+  ca="$("$jq_bin" -r '.clusters[0].cluster."certificate-authority-data" // empty' "$view")"
+  insecure="$("$jq_bin" -r '.clusters[0].cluster."insecure-skip-tls-verify" // false' "$view")"
+  ns="${KUBE_NAMESPACE:-$("$jq_bin" -r '.contexts[0].context.namespace // "default"' "$view")}"
+  token=""
+  how=""
+
+  if [[ -n "${KUBE_SERVICE_ACCOUNT:-}" ]]; then
+    token="$("$kubectl_bin" --context="$KUBE_CONTEXT" -n "$ns" create token \
+      "$KUBE_SERVICE_ACCOUNT" --duration="${KUBE_TOKEN_DURATION:-8h}")" || die "\
+could not mint a token for ServiceAccount '$KUBE_SERVICE_ACCOUNT' in namespace '$ns'.
+Create it and bind it to a role first:
+  kubectl --context=$KUBE_CONTEXT -n $ns create serviceaccount $KUBE_SERVICE_ACCOUNT
+  kubectl --context=$KUBE_CONTEXT -n $ns create rolebinding $KUBE_SERVICE_ACCOUNT \\
+    --clusterrole=edit --serviceaccount=$ns:$KUBE_SERVICE_ACCOUNT"
+    how="serviceaccount $ns:$KUBE_SERVICE_ACCOUNT, ${KUBE_TOKEN_DURATION:-8h}"
+  else
+    local exec_cmd
+    exec_cmd="$("$jq_bin" -r '.users[0].user.exec.command // empty' "$view")"
+    if [[ -n "$exec_cmd" ]]; then
+      # An exec-based context (EKS, GKE, OIDC) already mints short-lived tokens.
+      # Run the plugin here and pass on its output, because passing on the
+      # plugin's own inputs would hand over the cloud credentials that can reach
+      # every other cluster in the account.
+      local exec_args=() exec_envs=() api line out
+      while IFS= read -r line; do exec_args+=("$line"); done \
+        < <("$jq_bin" -r '.users[0].user.exec.args[]? // empty' "$view")
+      while IFS= read -r line; do exec_envs+=("$line"); done \
+        < <("$jq_bin" -r '.users[0].user.exec.env[]? | "\(.name)=\(.value)"' "$view")
+      api="$("$jq_bin" -r '.users[0].user.exec.apiVersion // "client.authentication.k8s.io/v1beta1"' "$view")"
+      if out="$(env ${exec_envs[@]+"${exec_envs[@]}"} \
+          KUBERNETES_EXEC_INFO="{\"apiVersion\":\"$api\",\"kind\":\"ExecCredential\",\"spec\":{\"interactive\":false}}" \
+          "$exec_cmd" ${exec_args[@]+"${exec_args[@]}"} 2>/dev/null)"; then
+        token="$("$jq_bin" -r '.status.token // empty' <<<"$out")"
+      fi
+      if [[ -n "$token" ]]; then
+        how="exec plugin $exec_cmd"
+      else
+        warn "the exec plugin for context '$KUBE_CONTEXT' returned no token"
+      fi
+    fi
+  fi
+
+  if [[ -n "$token" ]]; then
+    local cluster_args=(--server="$server") ca_file=""
+    if [[ -n "$ca" ]]; then
+      ca_file="$CRED_DIR/.ca.crt"
+      printf '%s' "$ca" | base64 -d > "$ca_file"
+      cluster_args+=(--certificate-authority="$ca_file" --embed-certs=true)
+    fi
+    if [[ "$insecure" == "true" ]]; then
+      cluster_args+=(--insecure-skip-tls-verify=true)
+    fi
+    # Built from scratch rather than edited, so the container never learns the
+    # real context, cluster, or user names either.
+    KUBECONFIG="$kube_cfg" "$kubectl_bin" config set-cluster devbox "${cluster_args[@]}" >/dev/null
+    KUBECONFIG="$kube_cfg" "$kubectl_bin" config set-credentials devbox --token="$token" >/dev/null
+    KUBECONFIG="$kube_cfg" "$kubectl_bin" config set-context devbox \
+      --cluster=devbox --user=devbox --namespace="$ns" >/dev/null
+    KUBECONFIG="$kube_cfg" "$kubectl_bin" config use-context devbox >/dev/null
+    rm -f "$ca_file"
+  else
+    "$kubectl_bin" config view --minify --flatten --context="$KUBE_CONTEXT" > "$kube_cfg"
+    KUBECONFIG="$kube_cfg" "$kubectl_bin" config set-context --current --namespace="$ns" >/dev/null
+    how="copied client credentials, no expiry"
+    warn "context '$KUBE_CONTEXT' authenticates with credentials that cannot be re-issued, so a copy goes into the container unchanged. Set KUBE_SERVICE_ACCOUNT in the profile to hand over a bounded token instead."
+  fi
+
+  rm -f "$view"
+  chmod 0644 "$kube_cfg"
+  SUMMARY_KUBE="$server  ns=$ns  ($how)"
+}
+
+# --- GitHub ----------------------------------------------------------------
+
+b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+github_app_jwt() {
+  local app_id="$1" key_file="$2" now header payload signing_input sig
+  now="$(date +%s)"
+  header='{"alg":"RS256","typ":"JWT"}'
+  # iat is backdated because GitHub rejects a JWT issued even a second in its
+  # own future, and host clocks drift. GitHub also caps exp - iat at 10 minutes.
+  payload="{\"iat\":$((now - 60)),\"exp\":$((now + 480)),\"iss\":\"$app_id\"}"
+  signing_input="$(printf '%s' "$header" | b64url).$(printf '%s' "$payload" | b64url)"
+  sig="$(printf '%s' "$signing_input" | openssl dgst -sha256 -sign "$key_file" -binary | b64url)"
+  printf '%s.%s' "$signing_input" "$sig"
+}
+
+mint_github() {
+  local token="" expires="" how=""
+
+  if [[ -n "${GITHUB_APP_ID:-}" ]]; then
+    [[ -n "${GITHUB_APP_INSTALLATION_ID:-}" ]] ||
+      die "GITHUB_APP_ID is set but GITHUB_APP_INSTALLATION_ID is not"
+    [[ -n "${GITHUB_APP_PRIVATE_KEY_REF:-}" ]] ||
+      die "GITHUB_APP_ID is set but GITHUB_APP_PRIVATE_KEY_REF is not"
+
+    local jq_bin key_file jwt body response
+    jq_bin="$(need_bin jq)"
+    key_file="$CRED_DIR/.app.pem"
+    ( umask 077; resolve_ref "$GITHUB_APP_PRIVATE_KEY_REF" > "$key_file" )
+    jwt="$(github_app_jwt "$GITHUB_APP_ID" "$key_file")"
+    rm -f "$key_file"
+
+    body='{}'
+    if [[ -n "${GITHUB_APP_REPOSITORIES:-}" ]]; then
+      body="$(printf '%s' "$GITHUB_APP_REPOSITORIES" | tr ',' '\n' |
+        "$jq_bin" -R -s '{repositories: (split("\n") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0)))}')"
+    fi
+
+    response="$(curl -sS -X POST \
+      -H "Authorization: Bearer $jwt" \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      -d "$body" \
+      "https://api.github.com/app/installations/$GITHUB_APP_INSTALLATION_ID/access_tokens")"
+    token="$("$jq_bin" -r '.token // empty' <<<"$response")"
+    [[ -n "$token" ]] ||
+      die "GitHub App token request failed: $("$jq_bin" -r '.message // "unknown error"' <<<"$response")"
+    expires="$("$jq_bin" -r '.expires_at // empty' <<<"$response")"
+    how="app installation token${GITHUB_APP_REPOSITORIES:+, repos: $GITHUB_APP_REPOSITORIES}"
+  elif [[ -n "${GITHUB_TOKEN_REF:-}" ]]; then
+    token="$(resolve_ref "$GITHUB_TOKEN_REF")"
+    [[ -n "$token" ]] || die "GITHUB_TOKEN_REF resolved to an empty value"
+    how="token from reference, no expiry"
+    warn "GITHUB_TOKEN_REF hands over a token this script cannot bound or expire. Configure a GitHub App for this profile when you can."
+  else
+    return 0
+  fi
+
+  add_env GITHUB_TOKEN "$token"
+  add_env GH_TOKEN "$token"
+  SUMMARY_GITHUB="$how${expires:+, expires $expires}"
+}
+
+# --- run -------------------------------------------------------------------
+
+build_image() {
+  local docker_bin
+  docker_bin="$(need_bin docker)"
+  echo "==> Building $IMAGE"
+  "$docker_bin" build -t "$IMAGE" "$REPO_ROOT"
+}
+
+banner() {
+  echo "==> devbox profile '$PROFILE_NAME'"
+  if [[ -n "${DEVBOX_DESCRIPTION:-}" ]]; then
+    echo "    $DEVBOX_DESCRIPTION"
+  fi
+  printf '    %-7s %s\n' aws "${SUMMARY_AWS:-none}"
+  printf '    %-7s %s\n' kube "${SUMMARY_KUBE:-none}"
+  printf '    %-7s %s\n' github "${SUMMARY_GITHUB:-none}"
+}
+
+main() {
+  case "${1:-}" in
+    ""|-h|--help) usage; exit 0 ;;
+    --list) list_profiles; exit 0 ;;
+    --build) build_image; exit 0 ;;
+    -*) die "unknown option '$1'; see devbox --help" ;;
+  esac
+
+  PROFILE_NAME="$1"
+  shift
+
+  local file docker_bin
+  file="$(profile_path "$PROFILE_NAME")" ||
+    die "no profile '$PROFILE_NAME'; 'devbox --list' shows what is available"
+  # shellcheck disable=SC1090
+  . "$file" || die "profile $file did not load; a value containing spaces or commas needs quoting"
+
+  docker_bin="$(need_bin docker)"
+  if ! "$docker_bin" image inspect "$IMAGE" >/dev/null 2>&1; then
+    build_image
+  fi
+
+  CRED_DIR="$(cd "$(mktemp -d)" && pwd -P)"
+  chmod 700 "$CRED_DIR"
+  : > "$CRED_DIR/env"
+  chmod 0600 "$CRED_DIR/env"
+
+  mint_aws
+  mint_kube
+  mint_github
+  add_env DEVBOX_PROFILE "$PROFILE_NAME"
+
+  banner
+
+  local run_args=(--rm)
+  if [[ -t 0 && -t 1 ]]; then
+    run_args+=(-it)
+  fi
+  run_args+=(
+    --hostname "devbox-$(printf '%s' "$PROFILE_NAME" | tr -c 'A-Za-z0-9-' '-')"
+    --env-file "$CRED_DIR/env"
+    -v "${DEVBOX_WORKDIR:-$PWD}:/home/dev/workdir"
+    -w /home/dev/workdir
+  )
+  if [[ -d "$CRED_DIR/aws" ]]; then
+    run_args+=(-v "$CRED_DIR/aws:/home/dev/.aws:ro")
+  fi
+  if [[ -f "$CRED_DIR/kubeconfig" ]]; then
+    run_args+=(-v "$CRED_DIR/kubeconfig:/home/dev/.kube/config:ro")
+  fi
+
+  "$docker_bin" run "${run_args[@]}" "$IMAGE" "$@"
+}
+
+main "$@"
