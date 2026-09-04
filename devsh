@@ -32,9 +32,15 @@ Profiles are profiles/<name>.env, holding any of:
   AWS_SOURCE_PROFILE  host AWS profile to export temporary credentials from
   KUBE_CONTEXT        host kube context to expose, on its own
   GITHUB_TOKEN_CMD    host command whose stdout is a GitHub token
+  DEVSH_WORKDIR       host directory mounted read-write at /home/dev/workdir,
+                      default /opt/workdir; this is the only thing that
+                      survives a container exit
 
 Leave a key out and the container gets no access to that provider. Profiles
 hold no secrets, only names and a command, so they are safe to commit.
+
+DEVSH_IMAGE and DEVSH_WORKDIR can also be set in the environment; a profile
+that sets them wins, since it is read last.
 EOF
 }
 
@@ -55,6 +61,15 @@ FILE="$REPO_ROOT/profiles/$PROFILE.env"
 [[ -f "$FILE" ]] || die "no profile '$PROFILE'; 'devsh --list' shows what is available"
 # shellcheck disable=SC1090
 . "$FILE" || die "profile $FILE did not load; a value containing spaces needs quoting"
+
+WORKDIR="${DEVSH_WORKDIR:-/opt/workdir}"
+[[ -d "$WORKDIR" ]] || die "\
+workdir '$WORKDIR' does not exist. It is the only directory that survives the
+container, so create it once:
+  sudo mkdir -p $WORKDIR && sudo chown \$(id -u):\$(id -g) $WORKDIR
+On Docker Desktop for Mac a path outside /Users must also be added under
+Settings -> Resources -> File Sharing. On a Linux host the container runs as
+uid 1001, so chown to that instead if it cannot write."
 
 DIR="$(mktemp -d)"
 chmod 700 "$DIR"
@@ -89,7 +104,7 @@ if [[ -n "${GITHUB_TOKEN_CMD:-}" ]]; then
   printf 'GITHUB_TOKEN=%s\nGH_TOKEN=%s\n' "$TOKEN" "$TOKEN" >> "$DIR/env"
 fi
 
-echo "==> devsh '$PROFILE': aws=${AWS_SOURCE_PROFILE:-none} kube=${KUBE_CONTEXT:-none} github=${GITHUB_TOKEN_CMD:-none}"
+echo "==> devsh '$PROFILE': aws=${AWS_SOURCE_PROFILE:-none} kube=${KUBE_CONTEXT:-none} github=${GITHUB_TOKEN_CMD:-none} workdir=$WORKDIR"
 
 # The image is normally already here, built from this repo and pushed to the
 # Hub. Build it if it is not, rather than letting docker run try to pull a tag
@@ -104,6 +119,6 @@ if [[ -t 0 ]]; then RUN+=(-t); fi
 docker run "${RUN[@]}" \
   --env-file "$DIR/env" \
   ${MOUNTS[@]+"${MOUNTS[@]}"} \
-  -v "$PWD:/home/dev/workdir" \
+  -v "$WORKDIR:/home/dev/workdir" \
   -w /home/dev/workdir \
   "$IMAGE" "$@"
