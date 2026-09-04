@@ -1032,5 +1032,28 @@ do
   -- require 'custom.plugins'
 end
 
+-- ============================================================
+-- SECTION 11: PLUGIN CLEANUP
+-- uninstall plugins this config no longer asks for
+-- ============================================================
+do
+  -- Deleting a `vim.pack.add` call does not uninstall the plugin: its clone stays
+  -- on disk and `vim.pack` keeps writing it back into `nvim-pack-lock.json`, so
+  -- the lockfile keeps resurrecting the entry on every machine that still has it.
+  --
+  -- `active` means "was added via `vim.pack.add()` this session" (see
+  -- `:help vim.pack.get()`), so anything added lazily *after* startup would look
+  -- like an orphan here and get deleted. Keep every `vim.pack.add` call at startup.
+  vim.api.nvim_create_autocmd('VimEnter', {
+    once = true,
+    callback = function()
+      local orphans = vim.iter(vim.pack.get()):filter(function(p) return not p.active end):map(function(p) return p.spec.name end):totable()
+      if #orphans == 0 then return end
+      vim.pack.del(orphans)
+      vim.notify('Uninstalled unused plugins: ' .. table.concat(orphans, ', '), vim.log.levels.INFO)
+    end,
+  })
+end
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et

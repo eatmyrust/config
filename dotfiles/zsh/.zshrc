@@ -121,7 +121,6 @@ alias git-email='git config user.email'
 alias gr='cd $(git rev-parse --show-toplevel)'
 alias vim='nvim'
 alias tg='terragrunt'
-# tree is no longer installed; lsd (from mise) covers it.
 alias tree='lsd --tree'
 
 source ~/powerlevel10k/powerlevel10k.zsh-theme
