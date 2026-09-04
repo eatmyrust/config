@@ -16,15 +16,15 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="${DEVBOX_IMAGE:-devbox:latest}"
+IMAGE="${DEVSH_IMAGE:-eatmyrust/devcontainer:latest}"
 
-die() { echo "devbox: $*" >&2; exit 1; }
+die() { echo "devsh: $*" >&2; exit 1; }
 
 usage() {
   cat <<'EOF'
-Usage: devbox <profile> [command...]   run the dev container with those credentials
-       devbox --list                   list profiles
-       devbox --build                  rebuild the image
+Usage: devsh <profile> [command...]   run the dev container with those credentials
+       devsh --list                   list profiles
+       devsh --build                  rebuild the image
 
 Profiles are profiles/<name>.env, holding any of:
 
@@ -52,7 +52,7 @@ esac
 PROFILE="$1"
 shift
 FILE="$REPO_ROOT/profiles/$PROFILE.env"
-[[ -f "$FILE" ]] || die "no profile '$PROFILE'; 'devbox --list' shows what is available"
+[[ -f "$FILE" ]] || die "no profile '$PROFILE'; 'devsh --list' shows what is available"
 # shellcheck disable=SC1090
 . "$FILE" || die "profile $FILE did not load; a value containing spaces needs quoting"
 
@@ -61,7 +61,7 @@ chmod 700 "$DIR"
 trap 'rm -rf "$DIR"' EXIT
 
 MOUNTS=()
-printf 'DEVBOX_PROFILE=%s\n' "$PROFILE" > "$DIR/env"
+printf 'DEVSH_PROFILE=%s\n' "$PROFILE" > "$DIR/env"
 
 if [[ -n "${AWS_SOURCE_PROFILE:-}" ]]; then
   # env-no-export emits exactly the KEY=value lines --env-file expects, so this
@@ -89,13 +89,19 @@ if [[ -n "${GITHUB_TOKEN_CMD:-}" ]]; then
   printf 'GITHUB_TOKEN=%s\nGH_TOKEN=%s\n' "$TOKEN" "$TOKEN" >> "$DIR/env"
 fi
 
-echo "==> devbox '$PROFILE': aws=${AWS_SOURCE_PROFILE:-none} kube=${KUBE_CONTEXT:-none} github=${GITHUB_TOKEN_CMD:-none}"
+echo "==> devsh '$PROFILE': aws=${AWS_SOURCE_PROFILE:-none} kube=${KUBE_CONTEXT:-none} github=${GITHUB_TOKEN_CMD:-none}"
 
-# Without this, a missing image sends docker off to pull devbox:latest from the
-# Hub and the failure it reports is about registry auth.
+# The image is normally already here, built from this repo and pushed to the
+# Hub. Build it if it is not, rather than letting docker run try to pull a tag
+# that may not exist yet and report it as a registry auth failure.
 docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" "$REPO_ROOT"
 
-docker run --rm -it \
+# -t only when there is a terminal to attach, so `devsh <profile> <command>`
+# still works from a script or a pipe.
+RUN=(--rm -i)
+if [[ -t 0 ]]; then RUN+=(-t); fi
+
+docker run "${RUN[@]}" \
   --env-file "$DIR/env" \
   ${MOUNTS[@]+"${MOUNTS[@]}"} \
   -v "$PWD:/home/dev/workdir" \
