@@ -1,4 +1,9 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
   "model": "opus",
   "statusLine": {
     "type": "command",
@@ -14,11 +19,6 @@
         "repo": "anthropics/claude-plugins-official"
       }
     }
-  },
-  "attribution": {
-    "commit": "",
-    "pr": "",
-    "sessionUrl": false
   },
   "effortLevel": "high",
   "tui": "fullscreen",
