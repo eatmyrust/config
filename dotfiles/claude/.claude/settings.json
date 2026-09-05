@@ -17,7 +17,8 @@
   },
   "attribution": {
     "commit": "",
-    "pr": ""
+    "pr": "",
+    "sessionUrl": false
   },
   "effortLevel": "high",
   "tui": "fullscreen",
