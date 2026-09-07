@@ -1026,10 +1026,8 @@ do
   require 'kickstart.plugins.neo-tree'
   -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
 
-  -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-  --
-  --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- require 'custom.plugins'
+  -- Your own plugins and configuration live in `lua/custom/plugins/*.lua`
+  require 'custom.plugins'
 end
 
 -- ============================================================

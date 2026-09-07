@@ -1,0 +1,21 @@
+[init]
+	defaultBranch = main
+
+[core]
+	editor = nvim
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+
+[merge]
+	ff = only
+
+[rebase]
+	autoStash = true
+	updateRefs = true
+
+[rerere]
+	enabled = true

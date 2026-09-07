@@ -19,7 +19,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STOW_PACKAGES=(zsh tmux nvim alacritty mise)
+STOW_PACKAGES=(zsh tmux nvim alacritty mise git)
 STOW_PACKAGES_UNFOLDED=(claude agents)
 
 CLAUDE_MARKETPLACES=(anthropics/claude-plugins-official)
