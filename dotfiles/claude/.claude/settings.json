@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "statusLine": {
     "type": "command",
     "command": "bash $HOME/.claude/statusline-command.sh"
@@ -22,5 +22,6 @@
   },
   "effortLevel": "high",
   "tui": "fullscreen",
-  "theme": "dark"
+  "theme": "dark",
+  "agentPushNotifEnabled": true
 }
