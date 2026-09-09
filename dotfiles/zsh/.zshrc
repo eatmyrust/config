@@ -114,6 +114,10 @@ export DISABLE_UPDATE_PROMPT=true
 
 export TG_TF_FORWARD_STDOUT=1
 
+# k9s resolves its config dir through XDG, which on macOS means
+# ~/Library/Application Support/k9s, not where stow puts these dotfiles.
+export K9S_CONFIG_DIR="$HOME/.config/k9s"
+
 unset TMOUT
 
 alias git-user='git config user.name'

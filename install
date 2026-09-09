@@ -20,7 +20,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STOW_PACKAGES=(zsh tmux nvim alacritty mise git)
-STOW_PACKAGES_UNFOLDED=(claude agents)
+# Stowed file-by-file rather than as a folded directory symlink, so the tools
+# that write into these config dirs at runtime (Claude Code settings, k9s
+# per-cluster state and screen dumps) land in $HOME instead of this repo.
+STOW_PACKAGES_UNFOLDED=(claude agents k9s)
 
 CLAUDE_MARKETPLACES=(anthropics/claude-plugins-official)
 CLAUDE_PLUGINS=(gopls-lsp@claude-plugins-official)
@@ -169,9 +172,9 @@ link_dotfiles() {
   fi
   if ! stow --dir="$REPO_ROOT/dotfiles" --target="$HOME" --no-folding --restow "${STOW_PACKAGES_UNFOLDED[@]}"; then
     echo "stow reported conflicts above for ${STOW_PACKAGES_UNFOLDED[*]}." >&2
-    echo "Claude Code rewrites ~/.claude/settings.json in place when you change settings via /config," >&2
-    echo "which can replace the symlink with a real file. Compare it against" >&2
-    echo "$REPO_ROOT/dotfiles/claude/.claude/settings.json, keep whichever you want, then re-run:" >&2
+    echo "These tools rewrite their own config in place (Claude Code via /config, k9s on exit)," >&2
+    echo "which can replace a symlink with a real file. Compare the conflicting file against" >&2
+    echo "its counterpart under $REPO_ROOT/dotfiles/, keep whichever you want, then re-run:" >&2
     echo "  stow --dir=$REPO_ROOT/dotfiles --target=$HOME --no-folding --restow ${STOW_PACKAGES_UNFOLDED[*]}" >&2
     exit 1
   fi

@@ -1,0 +1,6 @@
+# k9s writes runtime state next to its config: per-cluster view state,
+# screen dumps, and benchmark results.
+/clusters/
+/screen-dumps/
+/benchmarks/
+*.log
