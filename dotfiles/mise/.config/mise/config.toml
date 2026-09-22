@@ -13,6 +13,7 @@
 lockfile = true
 # Don't let a mistyped command trigger a surprise install.
 not_found_auto_install = false
+minimum_release_age_excludes = ["claude-code"]
 
 [tools]
 
