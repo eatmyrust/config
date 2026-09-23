@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#MISE description="Install third-party agent skills via the Skills CLI"
+#
+# Fetched at bootstrap time rather than vendored into home/.agents/skills/,
+# which holds only custom skills. Bump these lists when adopting a new skill;
+# if a name gets renamed upstream, `npx skills add <source> -l` lists what's
+# currently available.
+
+set -euo pipefail
+
+MATTPOCOCK=(
+  ask-matt code-review codebase-design diagnosing-bugs domain-modeling
+  grill-me grill-with-docs grilling handoff implement
+  improve-codebase-architecture prototype research setup-matt-pocock-skills
+  tdd teach to-spec to-tickets triage wayfinder writing-for-agents
+)
+VERCEL_LABS=(find-skills)
+
+add() {
+  local source="$1" skill args=()
+  shift
+  for skill in "$@"; do
+    args+=(--skill "$skill")
+  done
+  npx --yes skills add "$source" -g -y -a claude-code "${args[@]}"
+}
+
+add mattpocock/skills "${MATTPOCOCK[@]}"
+add vercel-labs/skills "${VERCEL_LABS[@]}"

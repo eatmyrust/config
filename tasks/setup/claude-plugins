@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#MISE description="Install Claude Code plugins"
+
+set -euo pipefail
+
+MARKETPLACES=(anthropics/claude-plugins-official)
+PLUGINS=(gopls-lsp@claude-plugins-official)
+
+for marketplace in "${MARKETPLACES[@]}"; do
+  claude plugin marketplace add "$marketplace" >/dev/null 2>&1 || true
+done
+
+installed="$(claude plugin list 2>/dev/null || true)"
+for plugin in "${PLUGINS[@]}"; do
+  grep -q "${plugin%%@*}" <<<"$installed" || claude plugin install "$plugin"
+done

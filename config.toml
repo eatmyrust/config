@@ -1,0 +1,180 @@
+# Global mise config: this repo is ~/.config/mise. It declares the whole machine
+# (system packages, git checkouts, dotfiles, login shell, dev tools), so a new
+# machine needs only:
+#
+#   curl https://mise.run | sh
+#   ~/.local/bin/mise bootstrap --adopt eatmyrust/config --yes
+#
+# Re-running `mise bootstrap` converges an existing machine; `mise run upgrade`
+# updates everything.
+#
+# Versions are declared loosely here and pinned exactly in mise.lock, which is
+# committed. Use `mise upgrade` to move within a range, `mise upgrade --bump` to
+# move the range itself.
+
+[settings]
+auto_update = true
+# Resolve every "latest"/"lts" into mise.lock with checksums, so a fresh
+# machine reproduces this one exactly.
+lockfile = true
+# Don't let a mistyped command trigger a surprise install.
+not_found_auto_install = false
+minimum_release_age_excludes = ["claude-code"]
+
+[tools]
+
+## Shell tooling
+bat         = "latest"
+ripgrep     = "latest"
+jq          = "latest"
+yq          = "latest"
+fzf         = "latest"
+tmux        = "latest"
+lazygit     = "latest"
+lsd         = "latest"
+coreutils   = "latest"
+tree-sitter = "latest"
+"aqua:neovim/neovim" = "latest"
+
+## Generic developer tooling
+apko           = "latest"
+"docker-cli"   = "latest"
+task           = "latest"
+trivy          = "latest"
+"github-cli"   = "latest"
+coder          = "latest"
+"claude-code"  = "latest"
+"github:convco/convco" = "latest"
+"aws-cli"      = "latest"
+argocd         = "latest"
+packer         = "latest"
+crane          = "latest"
+op             = "latest"
+
+## Languages and language servers
+go   = "latest"
+node = "lts"
+uv   = "latest"
+ko   = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
+java = "temurin-17"
+
+## Policy
+opa   = "latest"
+regal = "latest"
+oras  = "latest"
+
+## Cloud
+pulumi     = "latest"
+terraform  = "latest"
+opentofu   = "latest"
+terragrunt = "latest"
+
+## Kubernetes
+kubectl       = "latest"
+helm          = "latest"
+k9s           = "latest"
+kind          = "latest"
+minikube      = "latest"
+stern         = "latest"
+kubectx       = "latest"
+kubens        = "latest"
+kubeseal      = "latest"
+kube-linter   = "latest"
+eksctl        = "latest"
+vcluster      = "latest"
+argo          = "latest"
+ctlptl        = "latest"
+tilt          = "latest"
+clusterctl    = "latest"
+clusterawsadm = "latest"
+talosctl      = "latest"
+
+# System packages: only what mise [tools] cannot provide - login shells, GNU
+# userland, system libraries, the build toolchain, and GUI apps.
+[bootstrap.packages]
+
+## macOS: terminal and shell tooling
+"brew:zsh"            = { os = "macos" }
+"brew:bash"           = { os = "macos" }
+"brew:curl"           = { os = "macos" }
+"brew:gnu-sed"        = { os = "macos" }
+"brew:diffutils"      = { os = "macos" }
+"brew:findutils"      = { os = "macos" }
+"brew:openssl@3"      = { os = "macos" }
+"brew:watch"          = { os = "macos" }
+"brew:wget"           = { os = "macos" }
+"brew:git"            = { os = "macos" }
+"brew:make"           = { os = "macos" }
+"brew:wireguard-tools" = { os = "macos" }
+"brew-cask:alacritty"                     = { os = "macos" }
+"brew-cask:font-jetbrains-mono-nerd-font" = { os = ["macos", "linux"] }
+
+## macOS: apps
+"brew-cask:docker-desktop"        = { os = "macos" }
+"brew-cask:ngrok"                 = { os = "macos" }
+"brew-cask:1password"             = { os = "macos" }
+"brew-cask:1password-cli"         = { os = "macos" }
+"brew-cask:rectangle"             = { os = "macos" }
+"brew-cask:drawio"                = { os = "macos" }
+"brew-cask:firefox"               = { os = "macos" }
+"brew-cask:windows-app"           = { os = "macos" }
+"brew-cask:microsoft-auto-update" = { os = "macos" }
+"brew-cask:obsidian"              = { os = "macos" }
+"brew-cask:spotify"               = { os = "macos" }
+"brew-cask:microsoft-teams"       = { os = "macos" }
+"brew-cask:slack"                 = { os = "macos" }
+"brew-cask:zoom"                  = { os = "macos" }
+
+## Ubuntu/Debian
+"apt:build-essential" = "latest"
+"apt:curl"            = "latest"
+"apt:bind9-dnsutils"  = "latest"
+"apt:git"             = "latest"
+"apt:unzip"           = "latest"
+"apt:wget"            = "latest"
+"apt:zsh"             = "latest"
+
+## Rocky/RHEL
+"dnf:epel-release"       = "latest"
+"dnf:@Development Tools" = "latest"
+"dnf:bind-utils"         = "latest"
+"dnf:curl"               = "latest"
+"dnf:git"                = "latest"
+"dnf:unzip"              = "latest"
+"dnf:wget"               = "latest"
+"dnf:zsh"                = "latest"
+
+[bootstrap.brew]
+adopt = true
+
+[bootstrap.repos]
+"~/.oh-my-zsh"    = { url = "https://github.com/ohmyzsh/ohmyzsh.git" }
+"~/powerlevel10k" = { url = "https://github.com/romkatv/powerlevel10k.git" }
+"~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" = { url = "https://github.com/zsh-users/zsh-syntax-highlighting.git" }
+"~/.oh-my-zsh/custom/plugins/zsh-completions"         = { url = "https://github.com/zsh-users/zsh-completions.git" }
+"~/.tmux/plugins/tpm" = { url = "https://github.com/tmux-plugins/tpm" }
+
+[bootstrap.hooks]
+post-repos = 'GITSTATUS_CACHE_DIR="$HOME/powerlevel10k/gitstatus/usrbin" "$HOME/powerlevel10k/gitstatus/install"'
+
+[dotfiles]
+"~" = { source = "home", mode = "symlink-each" }
+# Claude Code reads skills only from ~/.claude/skills. Third-party skills get
+# linked there by the Skills CLI (setup:skills); custom ones are linked here.
+"~/.claude/skills/[!.]*" = "home/.agents/skills/[!.]*"
+
+[bootstrap.user]
+login_shell = "/bin/zsh"
+
+[tasks.bootstrap]
+description = "Imperative machine setup run at the end of mise bootstrap"
+depends = ["setup:*"]
+
+[tasks."setup:tmux"]
+description = "Install tmux plugins via TPM"
+run = "~/.tmux/plugins/tpm/bin/install_plugins"
+
+[tasks."setup:nvim"]
+description = "Install nvim plugins, LSP servers, and treesitter parsers"
+run = "nvim --headless +qa"
