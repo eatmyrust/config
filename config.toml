@@ -111,6 +111,7 @@ talosctl      = "latest"
 "brew-cask:font-jetbrains-mono-nerd-font" = { os = ["macos", "linux"] }
 
 ## macOS: apps
+"brew-cask:claude"                = { os = "macos" }
 "brew-cask:docker-desktop"        = { os = "macos" }
 "brew-cask:ngrok"                 = { os = "macos" }
 "brew-cask:1password"             = { os = "macos" }
