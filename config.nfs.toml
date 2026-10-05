@@ -4,8 +4,10 @@
 # ~/.config itself stays in ~ so this repo (~/.config/mise) is never moved;
 # its children from home/.config are linked one by one instead.
 #
-# Runs before packages so mise's own dirs move before anything writes to them.
-# An existing directory in ~ is moved into FAST_HOME on first run.
+# An existing directory in ~ is moved into FAST_HOME on first run, except
+# mise's own dirs: the running mise holds files open in them, so the move
+# fails partway. Point MISE_DATA_DIR/MISE_CACHE_DIR/MISE_STATE_DIR at
+# FAST_HOME in ~/.zshenv instead; the hook then only adds the ~ symlinks.
 
 [bootstrap.hooks]
 pre-packages = '''
@@ -26,6 +28,11 @@ src="${MISE_CONFIG_DIR:-$HOME/.config/mise}/home"
   [ -L "$link" ] && continue
   mkdir -p "$(dirname "$link")" "$(dirname "$target")"
   if [ -e "$link" ]; then
+    case "$d" in
+      */mise)
+        echo "skipping $link: mise is using it; move it by hand with mise stopped" >&2
+        continue ;;
+    esac
     if [ -e "$target" ]; then
       echo "both $link and $target exist; merge them by hand" >&2
       exit 1
