@@ -5,6 +5,8 @@
 #   curl https://mise.run | sh
 #   ~/.local/bin/mise bootstrap --adopt eatmyrust/config --yes
 #
+# On a slow NFS home, also export MISE_ENV=nfs and FAST_HOME (see config.nfs.toml).
+#
 # Re-running `mise bootstrap` converges an existing machine; `mise run upgrade`
 # updates everything.
 #

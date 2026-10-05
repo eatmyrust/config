@@ -1,0 +1,39 @@
+# For machines whose home directory is a slow NFS mount. Loaded with
+# MISE_ENV=nfs; FAST_HOME names the fast-disk directory that takes every
+# dotfile folder from home/ plus the heavy per-tool data, symlinked back into ~.
+# ~/.config itself stays in ~ so this repo (~/.config/mise) is never moved;
+# its children from home/.config are linked one by one instead.
+#
+# Runs before packages so mise's own dirs move before anything writes to them.
+# An existing directory in ~ is moved into FAST_HOME on first run.
+
+[bootstrap.hooks]
+pre-packages = '''
+set -eu
+fast="${FAST_HOME:?FAST_HOME must be set when MISE_ENV=nfs}"
+src="${MISE_CONFIG_DIR:-$HOME/.config/mise}/home"
+{
+  cd "$src"
+  find . -mindepth 1 -maxdepth 1 -type d ! -name .config | sed 's|^\./||'
+  find .config -mindepth 1 -maxdepth 1 -type d
+  printf '%s\n' \
+    .local/share/mise .local/state/mise .cache/mise \
+    .local/share/nvim .local/state/nvim .cache/nvim \
+    .oh-my-zsh powerlevel10k .tmux \
+    go .npm .cache/uv
+} | while read -r d; do
+  link="$HOME/$d" target="$fast/$d"
+  [ -L "$link" ] && continue
+  mkdir -p "$(dirname "$link")" "$(dirname "$target")"
+  if [ -e "$link" ]; then
+    if [ -e "$target" ]; then
+      echo "both $link and $target exist; merge them by hand" >&2
+      exit 1
+    fi
+    mv "$link" "$target"
+  else
+    mkdir -p "$target"
+  fi
+  ln -s "$target" "$link"
+done
+'''
