@@ -4,7 +4,7 @@
 # ~/.config itself stays in ~ so this repo (~/.config/mise) is never moved;
 # its children from home/.config are linked one by one instead.
 #
-# An existing directory in ~ is moved into FAST_HOME on first run, except
+# An existing directory in ~ is moved (or merged, ~ winning) into FAST_HOME, except
 # mise's own dirs: the running mise holds files open in them, so the move
 # fails partway. Point MISE_DATA_DIR/MISE_CACHE_DIR/MISE_STATE_DIR at
 # FAST_HOME in ~/.zshenv instead; the hook then only adds the ~ symlinks.
@@ -27,19 +27,26 @@ src="${MISE_CONFIG_DIR:-$HOME/.config/mise}/home"
   link="$HOME/$d" target="$fast/$d"
   [ -L "$link" ] && continue
   mkdir -p "$(dirname "$link")" "$(dirname "$target")"
+  [ -e "$link" ] || mkdir -p "$target"
+  # Also catches a symlinked parent, e.g. ~/.local already pointing into FAST_HOME.
+  [ "$link" -ef "$target" ] && continue
   if [ -e "$link" ]; then
     case "$d" in
       */mise)
         echo "skipping $link: mise is using it; move it by hand with mise stopped" >&2
         continue ;;
     esac
+    # Go's module cache is read-only, which blocks both overwriting and removal.
+    chmod -R u+w "$link"
     if [ -e "$target" ]; then
-      echo "both $link and $target exist; merge them by hand" >&2
-      exit 1
+      # ~ is what tools have been using; the FAST_HOME copy is stale or an
+      # interrupted earlier move, so ~ wins and FAST_HOME-only files are kept.
+      chmod -R u+w "$target"
+      cp -a "$link/." "$target/"
+      rm -rf "$link"
+    else
+      mv "$link" "$target"
     fi
-    mv "$link" "$target"
-  else
-    mkdir -p "$target"
   fi
   ln -s "$target" "$link"
 done
