@@ -110,7 +110,7 @@ talosctl      = "latest"
 "brew:make"           = { os = "macos" }
 "brew:wireguard-tools" = { os = "macos" }
 "brew-cask:alacritty"                     = { os = "macos" }
-"brew-cask:font-jetbrains-mono-nerd-font" = { os = ["macos", "linux"] }
+"brew-cask:font-jetbrains-mono-nerd-font" = { os = "macos" }
 
 ## macOS: apps
 "brew-cask:claude"                = { os = "macos" }
