@@ -25,29 +25,41 @@ src="${MISE_CONFIG_DIR:-$HOME/.config/mise}/home"
     go .npm .cache/uv
 } | while read -r d; do
   link="$HOME/$d" target="$fast/$d"
-  [ -L "$link" ] && continue
   mkdir -p "$(dirname "$link")" "$(dirname "$target")"
-  [ -e "$link" ] || mkdir -p "$target"
+  [ -e "$link" ] || [ -L "$link" ] || mkdir -p "$target"
   # Also catches a symlinked parent, e.g. ~/.local already pointing into FAST_HOME.
   [ "$link" -ef "$target" ] && continue
-  if [ -e "$link" ]; then
+  if [ -e "$link" ] || [ -L "$link" ]; then
     case "$d" in
       */mise)
         echo "skipping $link: mise is using it; move it by hand with mise stopped" >&2
         continue ;;
     esac
-    # Go's module cache is read-only, which blocks both overwriting and removal.
-    chmod -R u+w "$link"
-    if [ -e "$target" ]; then
-      # ~ is what tools have been using; the FAST_HOME copy is stale or an
-      # interrupted earlier move, so ~ wins and FAST_HOME-only files are kept.
-      chmod -R u+w "$target"
-      cp -a "$link/." "$target/"
-      rm -rf "$link"
+    if [ -L "$link" ]; then
+      # A link from an earlier layout, e.g. into an old dotfiles checkout. Left
+      # in place, mise would write its symlinks into that checkout. Keep its
+      # contents but leave the old location itself untouched.
+      if [ -d "$link" ]; then
+        mkdir -p "$target"
+        chmod -R u+w "$target"
+        cp -a "$link/." "$target/"
+      fi
+      rm "$link"
     else
-      mv "$link" "$target"
+      # Go's module cache is read-only, which blocks both overwriting and removal.
+      chmod -R u+w "$link"
+      if [ -e "$target" ]; then
+        # ~ is what tools have been using; the FAST_HOME copy is stale or an
+        # interrupted earlier move, so ~ wins and FAST_HOME-only files are kept.
+        chmod -R u+w "$target"
+        cp -a "$link/." "$target/"
+        rm -rf "$link"
+      else
+        mv "$link" "$target"
+      fi
     fi
   fi
+  mkdir -p "$target"
   ln -s "$target" "$link"
 done
 '''
