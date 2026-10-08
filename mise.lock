@@ -37,6 +37,46 @@ checksum = "sha256:9042fea0f6190f84b88b624a86fa583734fe6d4fa03cacc22cb8d2a77b935
 url = "https://github.com/chainguard-dev/apko/releases/download/v1.4.4/apko_1.4.4_darwin_amd64.tar.gz"
 url_api = "https://api.github.com/repos/chainguard-dev/apko/releases/assets/577882753"
 
+[[tools."aqua:ankitpokhrel/jira-cli"]]
+version = "1.7.0"
+backend = "aqua:ankitpokhrel/jira-cli"
+specifiers = ["latest"]
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.linux-arm64"]
+checksum = "sha256:80aa3cc02790892b29e1580a8e49eb49a6550815b362c5ef8c05aea1dee73a95"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071450"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.linux-arm64-musl"]
+checksum = "sha256:80aa3cc02790892b29e1580a8e49eb49a6550815b362c5ef8c05aea1dee73a95"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071450"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.linux-x64"]
+checksum = "sha256:b5e0ba4804f3f11f92c483d9a6ea9ebccec1c735cd2e12b0440cab9d7afd626a"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071447"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.linux-x64-musl"]
+checksum = "sha256:b5e0ba4804f3f11f92c483d9a6ea9ebccec1c735cd2e12b0440cab9d7afd626a"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071447"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.macos-arm64"]
+checksum = "sha256:f9c75d1b242a4cbd78fc49c00c9854c3856f1bd421bdf196c567b3bb71ccf527"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_macOS_arm64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071451"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.macos-x64"]
+checksum = "sha256:c2cb2f6b440522ec73439ec9a10f4a194b78e4c409341d18da3f91dfef59d090"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_macOS_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071454"
+
+[tools."aqua:ankitpokhrel/jira-cli"."platforms.windows-x64"]
+checksum = "sha256:84b205a187ff498533088a8077a294e4245323a66b33f2d963430d27323923a2"
+url = "https://github.com/ankitpokhrel/jira-cli/releases/download/v1.7.0/jira_1.7.0_windows_x86_64.zip"
+url_api = "https://api.github.com/repos/ankitpokhrel/jira-cli/releases/assets/288071449"
+
 [[tools."aqua:neovim/neovim"]]
 version = "0.12.5"
 backend = "aqua:neovim/neovim"
