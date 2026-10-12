@@ -92,6 +92,7 @@ tilt          = "latest"
 clusterctl    = "latest"
 clusterawsadm = "latest"
 talosctl      = "latest"
+crossplane    = "latest"
 
 # System packages: only what mise [tools] cannot provide - login shells, GNU
 # userland, system libraries, the build toolchain, and GUI apps.

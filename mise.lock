@@ -527,6 +527,33 @@ checksum = "sha256:0e073ea8192c3b8442ec8aaf44d53c1050a09084669fae3a6ceb0f2026cf8
 url = "https://github.com/google/go-containerregistry/releases/download/v0.22.1/go-containerregistry_Windows_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/google/go-containerregistry/releases/assets/543544437"
 
+[[tools.crossplane]]
+version = "2.5.0"
+backend = "aqua:crossplane/cli"
+specifiers = ["latest"]
+
+[tools.crossplane."platforms.linux-arm64"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/linux_arm64/crossplane"
+
+[tools.crossplane."platforms.linux-arm64-musl"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/linux_arm64/crossplane"
+
+[tools.crossplane."platforms.linux-x64"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/linux_amd64/crossplane"
+
+[tools.crossplane."platforms.linux-x64-musl"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/linux_amd64/crossplane"
+
+[tools.crossplane."platforms.macos-arm64"]
+checksum = "blake3:7aa866e8b2dc5b563e0800219a36b4843174668bad9513f6a10e8a99373fe7a7"
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/darwin_arm64/crossplane"
+
+[tools.crossplane."platforms.macos-x64"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/darwin_amd64/crossplane"
+
+[tools.crossplane."platforms.windows-x64"]
+url = "https://cli.crossplane.io/stable/v2.5.0/bin/windows_amd64/crossplane.exe"
+
 [[tools.ctlptl]]
 version = "0.9.6"
 backend = "aqua:tilt-dev/ctlptl"
