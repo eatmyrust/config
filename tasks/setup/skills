@@ -2,18 +2,16 @@
 #MISE description="Install third-party agent skills via the Skills CLI"
 #
 # Fetched at bootstrap time rather than vendored into home/.agents/skills/,
-# which holds only custom skills. Bump these lists when adopting a new skill;
-# if a name gets renamed upstream, `npx skills add <source> -l` lists what's
-# currently available.
+# which holds only custom skills.
 
 set -euo pipefail
 
-MATTPOCOCK=(
-  ask-matt code-review codebase-design diagnosing-bugs domain-modeling
-  grill-me grill-with-docs grilling handoff implement
-  improve-codebase-architecture prototype research setup-matt-pocock-skills
-  tdd teach to-spec to-tickets triage wayfinder writing-for-agents
-)
+# The plugin manifest lists Matt's curated set; the repo also holds
+# in-progress and course-specific skills that `--skill '*'` would pull in.
+MATTPOCOCK_MANIFEST=https://raw.githubusercontent.com/mattpocock/skills/main/.claude-plugin/plugin.json
+manifest="$(curl -fsSL "$MATTPOCOCK_MANIFEST")"
+mapfile -t MATTPOCOCK < <(jq -er '.skills[] | split("/") | last' <<<"$manifest")
+((${#MATTPOCOCK[@]})) || { echo "no skills in $MATTPOCOCK_MANIFEST" >&2; exit 1; }
 VERCEL_LABS=(find-skills)
 
 add() {
