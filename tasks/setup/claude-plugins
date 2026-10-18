@@ -4,7 +4,7 @@
 set -euo pipefail
 
 MARKETPLACES=(anthropics/claude-plugins-official)
-PLUGINS=(gopls-lsp@claude-plugins-official)
+PLUGINS=(gopls-lsp@claude-plugins-official frontend-design@claude-plugins-official)
 
 for marketplace in "${MARKETPLACES[@]}"; do
   claude plugin marketplace add "$marketplace" >/dev/null 2>&1 || true
