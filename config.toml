@@ -68,10 +68,11 @@ regal = "latest"
 oras  = "latest"
 
 ## Cloud
-pulumi     = "latest"
-terraform  = "latest"
-opentofu   = "latest"
-terragrunt = "latest"
+pulumi      = "latest"
+terraform   = "latest"
+opentofu    = "latest"
+terragrunt  = "latest"
+cloudflared = "latest"
 
 ## Kubernetes
 kubectl       = "latest"
