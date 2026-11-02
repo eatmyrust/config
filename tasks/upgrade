@@ -17,9 +17,9 @@ mise bootstrap packages upgrade --yes
 mise bootstrap packages prune --yes
 mise bootstrap repos update --yes
 mise self-update -y
-mise upgrade
-
-mise lock --global
+# locked mode refuses versions mise.lock doesn't pin, so bump the lock first.
+mise lock --global --bump
+mise install
 
 mise prune --tools
 

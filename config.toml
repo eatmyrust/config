@@ -11,14 +11,20 @@
 # updates everything.
 #
 # Versions are declared loosely here and pinned exactly in mise.lock, which is
-# committed. Use `mise upgrade` to move within a range, `mise upgrade --bump` to
-# move the range itself.
+# committed. With `locked = true`, nothing installs until mise.lock pins it:
+#
+#   new tool:      add it under [tools], then `mise lock --global && mise install`
+#   upgrade:       `mise lock --global --bump && mise install`
+#   change range:  `mise lock --global TOOL@VERSION` (also rewrites the request)
 
 [settings]
 auto_update = true
 # Resolve every "latest"/"lts" into mise.lock with checksums, so a fresh
 # machine reproduces this one exactly.
 lockfile = true
+lockfile_platforms = ["linux-x64", "linux-arm64", "macos-arm64"]
+# Refuse to install anything mise.lock doesn't pin for this platform.
+locked = true
 # Don't let a mistyped command trigger a surprise install.
 not_found_auto_install = false
 minimum_release_age_excludes = ["claude-code"]
