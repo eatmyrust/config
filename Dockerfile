@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:26.04 AS dev-container
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,7 +36,11 @@ ENV PATH=/home/dev/.local/share/mise/shims:/home/dev/.local/bin:${PATH} \
 
 COPY --chown=dev:dev . /home/dev/.config/mise/
 
-RUN curl -fsSL https://mise.run | sh && \
+# The setup:skills task calls the GitHub API. CI passes a token so it isn't
+# throttled by the anonymous rate limit on shared runner IPs. Local builds
+# work without it.
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    curl -fsSL https://mise.run | sh && \
     mise bootstrap --yes && \
     sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/dev/workdir /home/dev/.kube
