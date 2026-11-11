@@ -18,7 +18,8 @@ RUN apt update && \
     locales \
     sudo && \
     locale-gen en_US.UTF-8 && \
-    useradd --create-home --shell /bin/zsh dev && \
+    groupadd --gid 1001 dev && \
+    useradd --create-home --shell /bin/zsh --uid 1001 --gid 1001 dev && \
     echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev && \
     chmod 0440 /etc/sudoers.d/dev && \
     apt clean && rm -rf /var/lib/apt/lists/*
@@ -28,7 +29,8 @@ ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     TERM=xterm-256color
 
-USER dev
+# Numeric so Kubernetes can verify runAsNonRoot from the image config.
+USER 1001:1001
 WORKDIR /home/dev
 
 ENV PATH=/home/dev/.local/share/mise/shims:/home/dev/.local/bin:${PATH} \
