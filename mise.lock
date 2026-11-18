@@ -446,6 +446,26 @@ checksum = "sha256:cbf86082b5c87254afc333a5353c4b359f09b83488c9250a161cf1caae811
 url = "https://github.com/convco/convco/releases/download/v0.7.2/convco-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/convco/convco/releases/assets/543270776"
 
+[[tools.glab]]
+version = "1.131.0"
+backend = "gitlab:gitlab-org/cli"
+specifiers = ["latest"]
+
+[tools.glab."platforms.linux-arm64"]
+checksum = "sha256:7c4befd271203745b674caae2a69590ea5f9c6e5dee78bd3b40ba0e2a7c74749"
+url = "https://gitlab.com/gitlab-org/cli/-/releases/v1.131.0/downloads/glab_1.131.0_linux_arm64.tar.gz"
+url_api = "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1%2E131%2E0/glab_1%2E131%2E0_linux_arm64%2Etar%2Egz"
+
+[tools.glab."platforms.linux-x64"]
+checksum = "sha256:580dbca43835b47267e512476a442f6b2e8785a82b26ccacee22bd7010662b2d"
+url = "https://gitlab.com/gitlab-org/cli/-/releases/v1.131.0/downloads/glab_1.131.0_linux_amd64.tar.gz"
+url_api = "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1%2E131%2E0/glab_1%2E131%2E0_linux_amd64%2Etar%2Egz"
+
+[tools.glab."platforms.macos-arm64"]
+checksum = "sha256:905271694af2dd68cc254d9a2f3dae80036e5c752a82ea16dec5220f4bff1de7"
+url = "https://gitlab.com/gitlab-org/cli/-/releases/v1.131.0/downloads/glab_1.131.0_darwin_arm64.tar.gz"
+url_api = "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/packages/generic/glab/1%2E131%2E0/glab_1%2E131%2E0_darwin_arm64%2Etar%2Egz"
+
 [[tools.go]]
 version = "1.27.4"
 backend = "core:go"
